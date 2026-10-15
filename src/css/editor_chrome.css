@@ -1,0 +1,63 @@
+.monaco-editor .margin {
+  background: #000c18 !important;
+}
+.monaco-editor .inputarea.ime-input {
+  background: transparent;
+}
+.monaco-editor .contentWidgets .empty-editor-hint,
+.monaco-editor .contentWidgets .empty-editor-hint * {
+  color: #ff0000 !important;
+}
+.monaco-editor {
+  background-color: #000c18 !important;
+  background-image: none;
+}
+.monaco-workbench .activitybar > .content .badge .badge-content,
+.monaco-workbench .part.sidebar > .header-or-footer .badge .badge-content {
+  background: linear-gradient(to bottom, #fff951 25%, #00ffff);
+}
+.monaco-workbench .part.editor > .content .editor-group-container > .title .tabs-container > .tab.active {
+  box-shadow: inset 0 -5px 25px #a0000080;
+  position: relative;
+  border-radius: 4px 4px 0 0;
+  transition: background-color 120ms ease, box-shadow 120ms ease;
+}
+.monaco-workbench .part.editor > .content .editor-group-container > .title .tabs-container > .tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #a00000 !important;
+  opacity: 1;
+  z-index: 6;
+  pointer-events: none;
+}
+.monaco-workbench .activitybar > .content .action-item.checked,
+.monaco-workbench .part.sidebar > .header-or-footer .action-item.checked {
+  box-shadow: inset 0 -5px 25px #00ffff25;
+}
+/* Keep native active indicators: theme colors support side, top and bottom layouts. */
+
+/* Arrow by default over code; preserve text selection and Ctrl+click links. */
+.monaco-editor .view-lines,
+.monaco-editor .view-lines * {
+  cursor: default !important;
+}
+.monaco-editor:has(.selected-text) .view-lines,
+.monaco-editor:has(.selected-text) .view-lines * {
+  cursor: text !important;
+}
+.monaco-editor .detected-link-active,
+.monaco-editor .detected-link-active * {
+  cursor: pointer !important;
+}
+.monaco-reduce-motion .part.editor .tabs-container > .tab {
+  transition: none !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  .monaco-workbench .part.editor .tabs-container > .tab {
+    transition: none !important;
+  }
+}

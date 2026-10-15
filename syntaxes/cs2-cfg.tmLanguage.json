@@ -1,0 +1,102 @@
+{
+  "name": "Counter-Strike 2 Config",
+  "scopeName": "source.cs2cfg",
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#alias" },
+    { "include": "#binding" },
+    { "include": "#command" },
+    { "include": "#alias-call" },
+    { "include": "#setting" },
+    { "name": "punctuation.terminator.statement.cs2cfg", "match": ";" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.double-slash.cs2cfg",
+      "begin": "//",
+      "beginCaptures": { "0": { "name": "punctuation.definition.comment.cs2cfg" } },
+      "end": "$"
+    },
+    "alias": {
+      "name": "meta.alias.cs2cfg",
+      "begin": "(?:^|(?<=;))[ \\t]*((?i:alias))(?=[ \\t;]|$)",
+      "beginCaptures": { "1": { "name": "keyword.control.alias.cs2cfg" } },
+      "end": "(?=;|//|$)",
+      "patterns": [
+        {
+          "match": "\\G[ \\t]+(?:(\")([^\"\\r\\n]*)(\")|([^\\s\";]+))",
+          "captures": {
+            "1": { "name": "punctuation.definition.string.begin.cs2cfg" },
+            "2": { "name": "entity.name.function.alias.cs2cfg" },
+            "3": { "name": "punctuation.definition.string.end.cs2cfg" },
+            "4": { "name": "entity.name.function.alias.cs2cfg" }
+          }
+        },
+        { "include": "#arguments" }
+      ]
+    },
+    "binding": {
+      "name": "meta.binding.cs2cfg",
+      "begin": "(?:^|(?<=;))[ \\t]*((?i:bind|bindtoggle|unbind))(?=[ \\t;]|$)",
+      "beginCaptures": { "1": { "name": "support.function.console.cs2cfg" } },
+      "end": "(?=;|//|$)",
+      "patterns": [
+        {
+          "match": "\\G[ \\t]+(?:(\")([^\"\\r\\n]*)(\")|([^\\s\";]+))",
+          "captures": {
+            "1": { "name": "punctuation.definition.string.begin.cs2cfg" },
+            "2": { "name": "string.quoted.key.cs2cfg" },
+            "3": { "name": "punctuation.definition.string.end.cs2cfg" },
+            "4": { "name": "string.unquoted.key.cs2cfg" }
+          }
+        },
+        { "include": "#arguments" }
+      ]
+    },
+    "command": {
+      "name": "meta.command.cs2cfg",
+      "begin": "(?:^|(?<=;))[ \\t]*((?i:unbindall|binddefaults|toggle|incrementvar|multvar|cyclevar|exec|execifexists|exec_async|echo|say|say_team|play|playvol|stopsound|buy|sellbackall|clear|con_logfile|cmd|wait|host_writeconfig|disconnect|quit|exit|connect|retry|map|changelevel|noclip|god|kill|killvector|bot_kick|bot_add|bot_add_t|bot_add_ct|mp_restartgame|mp_warmup_end)|[+-][A-Za-z_][A-Za-z0-9_]*)(?=[ \\t;]|$)",
+      "beginCaptures": { "1": { "name": "support.function.console.cs2cfg" } },
+      "end": "(?=;|//|$)",
+      "patterns": [{ "include": "#arguments" }]
+    },
+    "alias-call": {
+      "name": "meta.command.cs2cfg",
+      "match": "(?:^|(?<=;))[ \\t]*([A-Za-z_][A-Za-z0-9_]*)(?=[ \\t]*(?://|;|$))",
+      "captures": { "1": { "name": "entity.name.function.console.cs2cfg" } }
+    },
+    "setting": {
+      "name": "meta.setting.cs2cfg",
+      "begin": "(?:^|(?<=;))[ \\t]*([A-Za-z_][A-Za-z0-9_]*)",
+      "beginCaptures": { "1": { "name": "variable.other.property.console.cs2cfg" } },
+      "end": "(?=;|//|$)",
+      "patterns": [{ "include": "#arguments" }]
+    },
+    "arguments": {
+      "patterns": [
+        { "include": "#quoted" },
+        {
+          "name": "constant.numeric.cs2cfg",
+          "match": "(?<![^\\s;])[-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?(?=[ \\t;]|//|$)"
+        },
+        {
+          "name": "constant.language.boolean.cs2cfg",
+          "match": "(?<![^\\s;])(?i:true|false)(?=[ \\t;]|//|$)"
+        },
+        { "name": "string.unquoted.argument.cs2cfg", "match": "(?:(?!//)[^\\s\";])+" }
+      ]
+    },
+    "quoted": {
+      "name": "string.quoted.double.cs2cfg",
+      "begin": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.cs2cfg" } },
+      "end": "\"|$",
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.cs2cfg" } },
+      "patterns": [
+        { "name": "constant.character.escape.cs2cfg", "match": "\\\\." },
+        { "name": "constant.numeric.cs2cfg", "match": "\\G[-+]?(?:[0-9]+(?:\\.[0-9]*)?|\\.[0-9]+)(?:[eE][-+]?[0-9]+)?(?=\")" },
+        { "name": "constant.language.boolean.cs2cfg", "match": "\\G(?i:true|false)(?=\")" }
+      ]
+    }
+  }
+}

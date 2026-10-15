@@ -1,0 +1,99 @@
+{
+	"name": "gloria-theme",
+	"displayName": "プロジェクト_Gloria",
+	"description": "Temet Nosce",
+	"version": "1.0.8",
+	"icon": "nihilZone.jpg",
+	"author": "Nihil",
+	"publisher": "Nihil",
+	"engines": {
+		"vscode": "^1.60.0"
+	},
+	"scripts": {
+		"test": "node --test test/*.test.js"
+	},
+	"extensionKind": [
+		"ui"
+	],
+	"categories": [
+		"Themes",
+		"Programming Languages"
+	],
+	"activationEvents": [
+		"onStartupFinished",
+		"onLanguage:html",
+		"onLanguage:css",
+		"onLanguage:cs2-cfg"
+	],
+	"main": "./src/extension.js",
+	"contributes": {
+		"languages": [{
+			"id": "cs2-cfg",
+			"aliases": ["Counter-Strike 2 Config", "CS2 CFG"],
+			"extensions": [".cfg"],
+			"configuration": "./language-configuration/cs2-cfg.json"
+		}],
+		"grammars": [{
+			"language": "cs2-cfg",
+			"scopeName": "source.cs2cfg",
+			"path": "./syntaxes/cs2-cfg.tmLanguage.json"
+		}],
+		"themes": [
+			{
+				"label": "Gloria",
+				"uiTheme": "vs-dark",
+				"path": "./themes/gloria-color-theme.json"
+			}
+		],
+		"commands": [
+			{
+				"command": "gloria.restoreWorkbench",
+				"title": "Gloria: Restore VS Code Workbench"
+			}
+		],
+		"configuration": {
+			"title": "Gloria",
+			"properties": {
+				"gloria.enableWorkbench": {
+					"type": "boolean",
+					"default": true,
+					"scope": "application",
+					"description": "Enable the custom workbench skin and structural glow. Disable to restore VS Code's workbench files."
+				},
+				"gloria.brightness": {
+					"type": "number",
+					"scope": "application",
+					"default": 0.45,
+					"minimum": 0,
+					"maximum": 1,
+					"description": "Set the brightness value for the glow effect. 0.0 is fully transparent and 1.0 is fully bright"
+				},
+				"gloria.whiteGlowRadius": {
+					"type": "number",
+					"scope": "application",
+					"default": 25,
+					"minimum": 0,
+					"maximum": 50,
+					"description": "Outer white glow radius in pixels, independent of brightness."
+				},
+				"gloria.maxDecorationFileSize": {
+					"type": "integer",
+					"default": 1000000,
+					"minimum": 0,
+					"description": "Maximum document length in characters for structural decorations. Native syntax coloring remains available in larger files."
+				},
+				"gloria.disableGlow": {
+					"type": "boolean",
+					"scope": "application",
+					"default": false,
+					"description": "Disable the glow effect, but show editor chrome updates"
+				}
+			}
+		}
+	},
+	"devDependencies": {
+		"jsdom": "^30.1.3",
+		"vscode-oniguruma": "^2.0.1",
+		"vscode-textmate": "^9.3.2"
+	}
+}

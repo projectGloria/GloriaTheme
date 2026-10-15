@@ -1,0 +1,9 @@
+.git/**
+node_modules/**
+test/**
+settingz/**
+*.vsix
+package-lock.json
+.gitignore
+.vscodeignore
+vsc-extension-quickstart.md
