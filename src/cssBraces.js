@@ -5,9 +5,18 @@ function findCssPunctuationRanges(text, baseOffset = 0) {
 	const round = [];
 	let quote;
 	let inComment = false;
+	let inUnquotedUrl = false;
 	for (let index = 0; index < text.length; index++) {
 		const character = text[index];
 		const nextCharacter = text[index + 1];
+		if (inUnquotedUrl) {
+			if (character === '\\') index++;
+			else if (character === ')') {
+				inUnquotedUrl = false;
+				round.push({ start: baseOffset + index, length: 1 });
+			}
+			continue;
+		}
 		if (inComment) {
 			if (character === '*' && nextCharacter === '/') {
 				inComment = false;
@@ -31,6 +40,14 @@ function findCssPunctuationRanges(text, baseOffset = 0) {
 			curly.push({ start: baseOffset + index, length: 1 });
 		} else if (character === '(' || character === ')') {
 			round.push({ start: baseOffset + index, length: 1 });
+			if (character === '(' && text.slice(Math.max(0, index - 3), index).toLowerCase() === 'url'
+				&& !/[\w\u0080-\uffff\\-]/.test(text[index - 4] || '')) {
+				let contentStart = index + 1;
+				while (/[\t\n\f\r ]/.test(text[contentStart] || '')) contentStart++;
+				// Quoted URLs use the normal string scanner. Unquoted URL tokens
+				// can contain braces and escapes, but end at an unescaped ')'.
+				inUnquotedUrl = !['"', "'"].includes(text[contentStart]);
+			}
 		}
 	}
 	return { curly, round };

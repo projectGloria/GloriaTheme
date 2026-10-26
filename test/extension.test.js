@@ -14,9 +14,11 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 	fs.writeFileSync(html, '<html><head></head><body></body>\n</html>');
 	const handlers = new Map();
 	const commands = new Map();
-	const config = { gloria: { ...initialGloria }, workbench: { colorTheme: 'Gloria' } };
+	const config = { gloria: { ...initialGloria }, workbench: { colorTheme: 'Gloria' }, editor: {} };
 	const subscriptions = [];
 	const errors = [];
+	const statusBarItems = [];
+	const webviewPanels = [];
 	let reads = 0;
 	const document = {
 		languageId: 'html', version: 1, uri: { toString: () => 'file:///sample.html' },
@@ -36,6 +38,7 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 	const vscode = {
 		env: { appRoot: directory },
 		ConfigurationTarget: { Global: 1 }, DecorationRangeBehavior: { ClosedClosed: 1 },
+		StatusBarAlignment: { Right: 2 },
 		Range: class { constructor(start, end) { this.start = start; this.end = end; } },
 		commands: { registerCommand(name, callback) { commands.set(name, callback); return { dispose() {} }; }, executeCommand() {} },
 		window: {
@@ -44,6 +47,26 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 				const type = { options, dispose() { for (const editor of editors) editor.decorations.delete(type); } };
 				return type;
 			},
+			createStatusBarItem(alignment, priority) {
+				const item = { alignment, priority, shown: false, show() { this.shown = true; }, dispose() {} };
+				statusBarItems.push(item);
+				return item;
+			},
+			createWebviewPanel(viewType, title) {
+				let messageHandler;
+				const panel = {
+					viewType, title,
+					webview: {
+						options: {}, html: '',
+						postMessage() {},
+						onDidReceiveMessage(cb) { messageHandler = cb; return { dispose() {} }; },
+						send(msg) { return messageHandler?.(msg); }
+					},
+					reveal() {}, onDidDispose() {}, dispose() {}
+				};
+				webviewPanels.push(panel);
+				return panel;
+			},
 			onDidChangeVisibleTextEditors: event('visible'), onDidChangeActiveTextEditor: event('active'),
 			onDidChangeTextEditorSelection: event('selection'),
 			showInformationMessage: async () => undefined,
@@ -51,7 +74,7 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 		},
 		workspace: {
 			getConfiguration(scope) { return {
-				get: (name, fallback) => config[scope][name] ?? fallback,
+				get: (name, fallback) => config[scope]?.[name] ?? fallback,
 				async update(name, value) { config[scope][name] = value; change(`${scope}.${name}`); }
 			}; },
 			onDidChangeConfiguration: event('configuration'), onDidChangeTextDocument: event('text'),
@@ -74,8 +97,8 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 		assert.deepEqual(errors, []);
 	});
 	const structural = editor => Array.from(editor.decorations.entries()).find(([type]) => !type.options.textDecoration.includes('!important'));
-	return { config, commands, emit, change, editors, document, files: resolveWorkbench(directory),
-		structural, reads: () => reads, extension: module.exports };
+	return { config, commands, emit, change, editors, document, statusBarItems, webviewPanels,
+		files: resolveWorkbench(directory), structural, reads: () => reads, extension: module.exports };
 }
 
 test('split editors reuse parsed ranges and configuration reaches both glow mechanisms', t => {
@@ -155,4 +178,34 @@ test('CSS parentheses keep their flat styling in embedded CSS with bracket color
 	const punctuation = Array.from(r.editors[0].decorations.entries()).find(([type]) => type.options.color === '#569cd6');
 	assert.equal(punctuation[1].length, 2);
 	assert.match(punctuation[0].options.textDecoration, /text-shadow: none !important/);
+});
+
+test('status bar rabbit icon opens control panel webview and live updates apply and reset', async t => {
+	const r = setup(t);
+	assert.equal(r.statusBarItems.length, 1);
+	assert.equal(r.statusBarItems[0].text, '$(gloria-rabbit) Gloria');
+	assert.equal(r.statusBarItems[0].command, 'gloria.openControlPanel');
+	assert.equal(r.statusBarItems[0].shown, true);
+
+	r.commands.get('gloria.openControlPanel')();
+	assert.equal(r.webviewPanels.length, 1);
+	assert.match(r.webviewPanels[0].webview.html, /LIVE PREVIEW/);
+
+	await r.webviewPanels[0].webview.send({
+		type: 'update',
+		state: {
+			colors: { 'editor.inactiveSelectionBackground': '#00FF41', 'editor.selectionBackground': '#990000' },
+			tokens: { variables: '#00FF41' },
+			glow: { brightness: 0.7, whiteGlowRadius: 30, disableGlow: false },
+			enableWorkbench: true
+		}
+	});
+	assert.equal(r.config.workbench.colorCustomizations['[Gloria]']['editor.selectionBackground'], '#990000');
+	assert.equal(r.config.editor.tokenColorCustomizations['[Gloria]'].textMateRules[0].settings.foreground, '#00FF41');
+	assert.equal(r.config.gloria.brightness, 0.7);
+
+	await r.commands.get('gloria.resetColors')();
+	assert.equal(r.config.workbench.colorCustomizations, undefined);
+	assert.equal(r.config.editor.tokenColorCustomizations, undefined);
+	assert.equal(r.config.gloria.brightness, 0.45);
 });

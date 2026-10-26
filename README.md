@@ -51,3 +51,5 @@ Use VS Code's Toggle Line Comment command to toggle `//` comments. Quote pairing
 ## Development
 
 Use a supported Node.js version (22.22.2+, 24.15.0+, or 26+), run `npm ci`, then `npm test`. Runtime code has no external dependencies; jsdom, vscode-textmate, and vscode-oniguruma are used only by the regression tests.
+
+On Windows, run `npm run package` to rebuild `gloria-theme-custom.vsix` from the current source. The command permits the packaging script for that PowerShell process without changing your saved execution policy. The package includes the CFG grammar and language configuration, along with the theme and workbench code. Reinstall the rebuilt VSIX and reload VS Code to apply it.

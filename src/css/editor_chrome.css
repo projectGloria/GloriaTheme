@@ -1,5 +1,6 @@
 .monaco-editor .margin {
   background: #000c18 !important;
+  background: var(--vscode-editorGutter-background, #000c18) !important;
 }
 .monaco-editor .inputarea.ime-input {
   background: transparent;
@@ -10,6 +11,7 @@
 }
 .monaco-editor {
   background-color: #000c18 !important;
+  background-color: var(--vscode-editor-background, #000c18) !important;
   background-image: none;
 }
 .monaco-workbench .activitybar > .content .badge .badge-content,
@@ -18,6 +20,7 @@
 }
 .monaco-workbench .part.editor > .content .editor-group-container > .title .tabs-container > .tab.active {
   box-shadow: inset 0 -5px 25px #a0000080;
+  box-shadow: inset 0 -5px 25px color-mix(in srgb, var(--vscode-tab-activeBorder, #a00000) 50%, transparent);
   position: relative;
   border-radius: 4px 4px 0 0;
   transition: background-color 120ms ease, box-shadow 120ms ease;
@@ -30,6 +33,7 @@
   right: 0;
   height: 4px;
   background: #a00000 !important;
+  background: var(--vscode-tab-activeBorder, #a00000) !important;
   opacity: 1;
   z-index: 6;
   pointer-events: none;

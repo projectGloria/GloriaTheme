@@ -55,13 +55,13 @@
     "editorCursor.foreground": "#ffffff",
     "editor.selectionBackground": "#800000",
     "editor.selectionForeground": "#fdfdfd",
-    "editor.inactiveSelectionBackground": "#80000040",
+    "editor.inactiveSelectionBackground": "#00FF41",
     "editorWidget.background": "#030306",
     "statusBar.background": "#000000",
     "statusBar.noFolderBackground": "#000000",
     "statusBar.debuggingBackground": "#000000",
     "titleBar.activeBackground": "#030306",
-    "titleBar.inactiveBackground": "#000c18",
+    "titleBar.inactiveBackground": "#030306",
     "terminal.foreground": "#40FF00",
     "editorGutter.background": "#000c18",
     "editorOverviewRuler.findMatchForeground": "#c90077",
@@ -71,7 +71,10 @@
     "editorBracketHighlight.foreground4": "#1e90ff",
     "editorBracketHighlight.foreground5": "#1e90ff",
     "editorBracketHighlight.foreground6": "#1e90ff",
-    "editorBracketHighlight.unexpectedBracket.foreground": "#fe4450"
+    "editorBracketHighlight.unexpectedBracket.foreground": "#fe4450",
+    "editorGroupHeader.noTabsBackground": "#000c18",
+    "tab.unfocusedActiveBackground": "#0A0A0A",
+    "tab.unfocusedInactiveBackground": "#030306"
   },
   "tokenColors": [
     {
@@ -318,7 +321,7 @@
         "support.type.vendored.property-name.media.css"
       ],
       "settings": {
-        "foreground": "#ff4d4d"
+        "foreground": "#ff0000"
       }
     },
     {
@@ -375,7 +378,7 @@
         "variable.parameter.url.css"
       ],
       "settings": {
-        "foreground": "#ff4d4d"
+        "foreground": "#ff0000"
       }
     },
     {

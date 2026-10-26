@@ -46,7 +46,15 @@
         }
       }
     }
-    const css = rules.join('\n') + '\n' + chromeStyles;
+    const extraRules = [];
+    if (settings.editorBackground && /^#[0-9a-f]{6,8}$/i.test(settings.editorBackground)) {
+      extraRules.push(`.monaco-editor { background-color: ${settings.editorBackground} !important; }`);
+    }
+    if (settings.gutterBackground && /^#[0-9a-f]{6,8}$/i.test(settings.gutterBackground)) {
+      extraRules.push(`.monaco-editor .margin { background: ${settings.gutterBackground} !important; background-color: ${settings.gutterBackground} !important; }`);
+    }
+    const extra = extraRules.length ? '\n' + extraRules.join('\n') : '';
+    const css = rules.join('\n') + '\n' + chromeStyles + extra;
     let style = document.getElementById('gloria-theme-styles');
     if (!style) {
       style = document.createElement('style');
@@ -72,7 +80,12 @@
         nextSettings = { enabled: false };
       } else {
         const state = await response.json();
-        nextSettings = { ...normalizeGlowSettings(state), enabled: state.enabled === true };
+        nextSettings = {
+          ...normalizeGlowSettings(state),
+          enabled: state.enabled === true,
+          ...(state.editorBackground ? { editorBackground: state.editorBackground } : {}),
+          ...(state.gutterBackground ? { gutterBackground: state.gutterBackground } : {})
+        };
       }
     } catch {
       nextSettings = { enabled: false };

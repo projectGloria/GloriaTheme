@@ -1,6 +1,6 @@
 const assert = require('assert');
 const test = require('node:test');
-const { findCssCurlyBraceRanges, findEmbeddedCssCurlyBraceRanges } = require('../src/cssBraces');
+const { findCssCurlyBraceRanges, findEmbeddedCssCurlyBraceRanges, findCssPunctuationRanges } = require('../src/cssBraces');
 
 function highlightedCharacters(source) {
 	return findCssCurlyBraceRanges(source).map(range => source.slice(range.start, range.start + range.length));
@@ -44,7 +44,7 @@ assert.deepStrictEqual(
 console.log('CSS curly-brace scanner tests passed.');
 
 test('embedded CSS ignores markup-looking text in raw text elements', () => {
-	for (const tag of ['textarea', 'title', 'script']) {
+	for (const tag of ['textarea', 'title', 'script', 'iframe', 'xmp', 'noembed', 'noframes']) {
 		assert.deepStrictEqual(findEmbeddedCssCurlyBraceRanges(`<${tag}><style>.ignored { text }</style></${tag}>`), []);
 	}
 });
@@ -62,4 +62,30 @@ test('incomplete style blocks still decorate actual braces while typing', () => 
 
 test('escaped CSS braces outside strings are not block delimiters', () => {
 	assert.deepStrictEqual(highlightedCharacters('.escaped\\{name { color: red }'), ['{', '}']);
+});
+
+test('unquoted URL contents are not structural punctuation', () => {
+	for (const url of [
+		'url(https://example.test/{icon}.svg)',
+		'URL( data:image/svg+xml,{icon})',
+		'url(https://example.test/escaped\\)\\({icon}.svg)',
+		'url("https://example.test/{icon}.svg")'
+	]) {
+		const source = `.icon { background-image: ${url}; width: calc(1px + 2px); }`;
+		assert.deepStrictEqual(highlightedCharacters(source), ['{', '}'], url);
+		const punctuation = findCssPunctuationRanges(source);
+		assert.equal(punctuation.round.length, 4, 'URL and calc delimiters remain decorated');
+		const html = `<style>${source}</style>`;
+		assert.deepStrictEqual(findEmbeddedCssCurlyBraceRanges(html).map(range => range.start),
+			punctuation.curly.map(range => range.start + '<style>'.length));
+	}
+});
+
+test('an unfinished unquoted URL does not expose its contents as braces', () => {
+	assert.deepStrictEqual(highlightedCharacters('.icon { background: url(https://example.test/{icon}'), ['{']);
+});
+
+test('functions whose names end in url still expose nested punctuation', () => {
+	const source = '.icon { value: custom-url({value}); }';
+	assert.deepStrictEqual(highlightedCharacters(source), ['{', '{', '}', '}']);
 });

@@ -1,18 +1,28 @@
+const path = require('path');
 const vscode = require('vscode');
 const { findGrandparentTagRanges, parseHtmlElements } = require('./htmlGrandparents');
 const { findCssPunctuationRanges, findEmbeddedCssPunctuationRanges } = require('./cssBraces');
 const { normalizeGlowSettings, glowShadow } = require('./glow');
 const { resolveWorkbench, installWorkbench, claimState, releaseState, restoreWorkbench } = require('./workbench');
+const { registerControlPanel } = require('./controlPanel');
 
 let shutdown;
 
 function readSettings() {
 	const config = vscode.workspace.getConfiguration('gloria');
-	return normalizeGlowSettings({
+	const normalized = normalizeGlowSettings({
 		brightness: config.get('brightness', 0.45),
 		disableGlow: config.get('disableGlow', false),
 		whiteGlowRadius: config.get('whiteGlowRadius', 25)
 	});
+	const customColors = vscode.workspace.getConfiguration('workbench').get('colorCustomizations')?.['[Gloria]'];
+	const customBg = customColors?.['editor.background'];
+	const customGutter = customColors?.['editorGutter.background'];
+	return {
+		...normalized,
+		...(customBg ? { editorBackground: customBg } : {}),
+		...(customGutter ? { gutterBackground: customGutter } : {})
+	};
 }
 
 function activate(context) {
@@ -52,8 +62,9 @@ function activate(context) {
 
 	const decorations = registerDynamicGlowDecorations(context);
 	const selectionContrast = registerSelectionContrast(context);
+	const controlPanel = registerControlPanel(vscode, context, path.join(__dirname, '..'));
 	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
-		if (event.affectsConfiguration('gloria')) synchronize();
+		if (event.affectsConfiguration('gloria') || event.affectsConfiguration('workbench.colorCustomizations')) synchronize();
 	}));
 
 	if (files && !restored) {
@@ -72,6 +83,7 @@ function activate(context) {
 	shutdown = () => {
 		decorations.dispose();
 		selectionContrast.dispose();
+		controlPanel.dispose();
 		if (files && !restored) {
 			try { releaseState(files); } catch (error) { console.error(error); }
 		}
@@ -185,12 +197,16 @@ function createWhiteGlowDecorationType() {
 
 function registerSelectionContrast(context) {
 	let disposed = false;
-	const decoration = vscode.window.createTextEditorDecorationType({
-		color: '#fdfdfd',
-		// Native editor.selectionForeground is only rendered by high-contrast themes.
-		textDecoration: 'none; color: #fdfdfd !important; text-shadow: none !important',
-		rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
-	});
+	const createDecoration = () => {
+		const fg = vscode.workspace.getConfiguration('workbench').get('colorCustomizations')?.['[Gloria]']?.['editor.selectionForeground'] || '#fdfdfd';
+		return vscode.window.createTextEditorDecorationType({
+			color: fg,
+			// Native editor.selectionForeground is only rendered by high-contrast themes.
+			textDecoration: `none; color: ${fg} !important; text-shadow: none !important`,
+			rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
+		});
+	};
+	let decoration = createDecoration();
 	function update(editor) {
 		if (disposed || !editor) return;
 		const active = vscode.workspace.getConfiguration('workbench').get('colorTheme') === 'Gloria';
@@ -208,7 +224,14 @@ function registerSelectionContrast(context) {
 		vscode.window.onDidChangeTextEditorSelection(event => update(event.textEditor)),
 		vscode.window.onDidChangeVisibleTextEditors(updateVisible),
 		vscode.workspace.onDidChangeConfiguration(event => {
-			if (event.affectsConfiguration('workbench.colorTheme')) updateVisible();
+			if (disposed) return;
+			if (event.affectsConfiguration('workbench.colorCustomizations')) {
+				decoration.dispose();
+				decoration = createDecoration();
+				updateVisible();
+			} else if (event.affectsConfiguration('workbench.colorTheme')) {
+				updateVisible();
+			}
 		}),
 		lifetime
 	);

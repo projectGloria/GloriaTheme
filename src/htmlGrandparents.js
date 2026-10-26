@@ -15,7 +15,9 @@ const VOID_ELEMENTS = new Set([
 	"wbr",
 ]);
 
-const RAW_TEXT_ELEMENTS = new Set(["script", "style", "textarea", "title"]);
+const RAW_TEXT_ELEMENTS = new Set([
+	"script", "style", "textarea", "title", "iframe", "xmp", "noembed", "noframes"
+]);
 
 const P_CLOSING_ELEMENTS = new Set([
 	"address",
@@ -90,7 +92,7 @@ function parseHtmlElements(text) {
 		const rawElement = stack[stack.length - 1];
 		let tagStart;
 
-		if (rawElement && RAW_TEXT_ELEMENTS.has(rawElement.tagName)) {
+		if (rawElement?.namespace === 'html' && RAW_TEXT_ELEMENTS.has(rawElement.tagName)) {
 			tagStart = findRawClosingTag(text, cursor, rawElement.tagName);
 			if (tagStart === -1) break;
 			rawElement.contentEnd = tagStart;
@@ -140,11 +142,13 @@ function parseHtmlElements(text) {
 			continue;
 		}
 
-		closeImplicitElements(stack, tagName);
+		const namespace = elementNamespace(stack[stack.length - 1], tagName);
+		if (namespace === 'html') closeImplicitElements(stack, tagName);
 
 		const parent = stack[stack.length - 1];
 		const element = {
 			tagName,
+			namespace,
 			openName: { start: nameStart, length: originalTagName.length },
 			closeName: undefined,
 			contentStart: tagEnd + 1,
@@ -158,7 +162,8 @@ function parseHtmlElements(text) {
 
 		const tagBody = text.slice(nameEnd, tagEnd);
 		const isSelfClosing = /\/\s*$/.test(tagBody);
-		if (!isSelfClosing && !VOID_ELEMENTS.has(tagName)) {
+		// HTML ignores the slash on non-void tags; SVG and MathML honor it.
+		if (namespace === 'html' ? !VOID_ELEMENTS.has(tagName) : !isSelfClosing) {
 			if (!stack.indexes.has(tagName)) stack.indexes.set(tagName, []);
 			stack.indexes.get(tagName).push(stack.length);
 			stack.push(element);
@@ -168,6 +173,18 @@ function parseHtmlElements(text) {
 	}
 
 	return elements;
+}
+
+function elementNamespace(parent, tagName) {
+	let namespace = parent?.namespace || 'html';
+	if (namespace === 'svg' && ['foreignobject', 'desc', 'title'].includes(parent.tagName)) {
+		namespace = 'html';
+	} else if (namespace === 'math' && ['mi', 'mo', 'mn', 'ms', 'mtext'].includes(parent.tagName)
+		&& !['mglyph', 'malignmark'].includes(tagName)) {
+		namespace = 'html';
+	}
+	if (namespace === 'html' && ['svg', 'math'].includes(tagName)) return tagName;
+	return namespace;
 }
 
 function closeElement(stack, tagName, closeName) {

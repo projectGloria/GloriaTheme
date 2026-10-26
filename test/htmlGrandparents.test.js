@@ -1,6 +1,6 @@
 const assert = require('assert');
 const test = require('node:test');
-const { findGrandparentTagRanges } = require('../src/htmlGrandparents');
+const { findGrandparentTagRanges, parseHtmlElements } = require('../src/htmlGrandparents');
 
 function highlightedTags(source) {
 	return findGrandparentTagRanges(source).map(range => source.slice(range.start, range.start + range.length));
@@ -104,4 +104,31 @@ test('optional table end tags close open cells and rows', () => {
 test('deeply nested documents do not require recursive tree traversal', () => {
 	const source = '<div>'.repeat(15000) + '<span>text</span>' + '</div>'.repeat(15000);
 	assert.deepStrictEqual(highlightedTags(source), ['div', 'div']);
+});
+
+test('raw HTML containers do not create ancestors from their text contents', () => {
+	for (const tag of ['iframe', 'xmp', 'noembed', 'noframes']) {
+		const source = `<div><${tag}><section><span>x</span></section></${tag}></div>`;
+		assert.deepStrictEqual(highlightedTags(source), [], tag);
+		assert.deepStrictEqual(parseHtmlElements(source).map(element => element.tagName), ['div', tag]);
+	}
+});
+
+test('self-closing slashes do not close ordinary HTML elements', () => {
+	assert.deepStrictEqual(highlightedTags('<div/><section><span>x</span></section>'), ['div']);
+	assert.deepStrictEqual(highlightedTags('<div/><section><span>x</span></section></div>'), ['div', 'div']);
+	assert.deepStrictEqual(highlightedTags('<div><img/><span>x</span></div>'), []);
+});
+
+test('foreign elements retain self-closing behavior and HTML integration points', () => {
+	for (const source of [
+		'<svg><path/><g><circle/></g></svg>',
+		'<math><mspace/><mrow><mi>x</mi></mrow></math>'
+	]) {
+		const elements = parseHtmlElements(source);
+		assert.strictEqual(elements[2].parent, elements[0]);
+		assert.strictEqual(elements[3].parent, elements[2]);
+	}
+	const elements = parseHtmlElements('<svg><foreignObject><div/><section><span>x</span></section></div></foreignObject></svg>');
+	assert.strictEqual(elements.find(element => element.tagName === 'section').parent.tagName, 'div');
 });
