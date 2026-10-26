@@ -1,8 +1,6 @@
 <div align="center">
 
-<a href="https://marketplace.visualstudio.com/items?itemName=Nihilnia.gloria-theme">
-  <img src="https://raw.githubusercontent.com/projectGloria/GloriaTheme/main/assets/gloria-banner.png" alt="Gloria Theme Banner" width="100%" />
-</a>
+<img src="https://raw.githubusercontent.com/projectGloria/GloriaTheme/main/assets/gloriaBanner.png" alt="Gloria Theme Banner" width="100%" />
 
 # プロジェクト_Gloria
 
@@ -99,7 +97,7 @@ Gloria includes a dedicated Webview Control Panel embedded right into the VS Cod
 
 1. Click the **Gloria Rabbit** icon in the Activity Bar on the left edge of your VS Code window:
    <p align="center">
-     <img src="https://raw.githubusercontent.com/projectGloria/GloriaTheme/main/assets/rabbit-badge.svg" alt="Gloria Rabbit Icon" width="72" height="72" />
+     <img src="https://raw.githubusercontent.com/projectGloria/GloriaTheme/main/assets/rabbit.png" alt="Gloria Rabbit Icon" width="48" height="48" />
    </p>
 2. Or press <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> (macOS: <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd>) and run:
    ```

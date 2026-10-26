@@ -3,7 +3,7 @@
 ## 1.0.9
 
 - Update extension description to be clear, descriptive, and self-explanatory for the VS Code Marketplace.
-- Add high-resolution header banner, interactive control panel mockup, and glowing rabbit badge graphics to README.
+- Add authentic control panel interface screenshot to README.
 - Fix image and logo URLs to resolve reliably on the Visual Studio Marketplace and GitHub CDN.
 - Patch VS Code's workbench only while Gloria is the active theme; switching themes restores it once no Gloria window remains, and uninstalling restores it on the next restart (`vscode:uninstall`).
 - Glow follows token roles instead of exact hex values, so recolored roles keep their glow; colorized brackets glow per nesting level.
