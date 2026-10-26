@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.0.1
+
+- Emphasize the JavaScript ecosystem and live control panel in the README, with a high-resolution image of the actual panel.
+- Refresh badges, feature table spacing, and credits; move the CS2 badge to its dedicated section.
+
 ## 2.0.0
 
 - Update extension description to be clear, descriptive, and self-explanatory for the VS Code Marketplace.
