@@ -3,7 +3,7 @@
   const chromeStyles = [CHROME_STYLES_JSON];
   const scriptUrl = document.currentScript.src;
   const stateUrl = new URL('./gloria-state.json', scriptUrl);
-  let settings = { enabled: false };
+  let settings = { enabled: false, glowColors: DEFAULT_GLOW_COLORS };
   let stopped = false;
   let refreshing = false;
   let frame;
@@ -39,22 +39,22 @@
         const pattern = /([^{}]+)\{([^{}]*)\}/g;
         let match;
         while ((match = pattern.exec(element.textContent))) {
-          const color = /(?:^|;)\s*color:\s*#(fdfdfd|ff0000|ff0001|1e90ff)\s*(?:;|$)/i.exec(match[2]);
-          if (!color) continue;
+          const color = /(?:^|;)\s*color:\s*#([0-9a-f]{6})\s*(?:;|$)/i.exec(match[2]);
+          const hex = color?.[1].toLowerCase();
+          // Glow follows the role map from the extension, so recolored roles keep their glow.
+          const kind = hex && settings.glowColors[hex];
+          if (!kind) continue;
           const selectors = match[1].split(',').map(selector => `.monaco-workbench ${selector.trim()}`).join(',');
-          rules.push(`${selectors}{text-shadow:${glowShadow(color[1].toLowerCase(), settings)};backface-visibility:hidden;}`);
+          rules.push(`${selectors}{text-shadow:${glowShadow(hex, settings, kind)};backface-visibility:hidden;}`);
         }
       }
+      // Appended after token rules: equal specificity, so colorized brackets take their level's glow.
+      for (let level = 0; level < 30; level++) {
+        rules.push(`.monaco-workbench .bracket-highlighting-${level}{text-shadow:${bracketLevelShadow(level, settings)};}`);
+      }
     }
-    const extraRules = [];
-    if (settings.editorBackground && /^#[0-9a-f]{6,8}$/i.test(settings.editorBackground)) {
-      extraRules.push(`.monaco-editor { background-color: ${settings.editorBackground} !important; }`);
-    }
-    if (settings.gutterBackground && /^#[0-9a-f]{6,8}$/i.test(settings.gutterBackground)) {
-      extraRules.push(`.monaco-editor .margin { background: ${settings.gutterBackground} !important; background-color: ${settings.gutterBackground} !important; }`);
-    }
-    const extra = extraRules.length ? '\n' + extraRules.join('\n') : '';
-    const css = rules.join('\n') + '\n' + chromeStyles + extra;
+    // Background customizations need no plumbing: the chrome CSS reads VS Code's color variables.
+    const css = rules.join('\n') + '\n' + chromeStyles;
     let style = document.getElementById('gloria-theme-styles');
     if (!style) {
       style = document.createElement('style');
@@ -77,18 +77,17 @@
       stateUrl.searchParams.set('t', Date.now());
       const response = await fetch(stateUrl.href, { cache: 'no-store' });
       if (!response.ok) {
-        nextSettings = { enabled: false };
+        nextSettings = { enabled: false, glowColors: DEFAULT_GLOW_COLORS };
       } else {
         const state = await response.json();
         nextSettings = {
           ...normalizeGlowSettings(state),
           enabled: state.enabled === true,
-          ...(state.editorBackground ? { editorBackground: state.editorBackground } : {}),
-          ...(state.gutterBackground ? { gutterBackground: state.gutterBackground } : {})
+          glowColors: normalizeGlowColors(state.glowColors) || DEFAULT_GLOW_COLORS
         };
       }
     } catch {
-      nextSettings = { enabled: false };
+      nextSettings = { enabled: false, glowColors: DEFAULT_GLOW_COLORS };
     } finally {
       refreshing = false;
     }

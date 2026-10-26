@@ -58,6 +58,8 @@ $contentTypes = @'
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="css" ContentType="text/css" />
   <Default Extension="jpg" ContentType="image/jpeg" />
+  <Default Extension="jpeg" ContentType="image/jpeg" />
+  <Default Extension="png" ContentType="image/png" />
   <Default Extension="js" ContentType="application/javascript" />
   <Default Extension="json" ContentType="application/json" />
   <Default Extension="md" ContentType="text/markdown" />
@@ -77,12 +79,25 @@ try {
             $files += Get-ChildItem -LiteralPath (Join-Path $projectRoot $directory) -File -Recurse |
                 ForEach-Object { $_.FullName.Substring($projectRoot.Length + 1) }
         }
+        $rawBaseUrl = "https://raw.githubusercontent.com/projectGloria/GloriaTheme/main"
         foreach ($file in $files) {
             $entryName = 'extension/' + $file.Replace('\', '/')
-            if ($file -eq 'README.md' -or $file -eq 'CHANGELOG.md') { $entryName = $entryName.ToLowerInvariant() }
-            [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
-                $archive, (Join-Path $projectRoot $file), $entryName,
-                [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+            if ($file -eq 'README.md' -or $file -eq 'CHANGELOG.md') {
+                $entryName = $entryName.ToLowerInvariant()
+                $content = Get-Content -LiteralPath (Join-Path $projectRoot $file) -Raw -Encoding UTF8
+                if ($file -eq 'README.md') {
+                    # Rewrite relative image links to GitHub raw URLs so Marketplace renders them
+                    $content = $content -replace 'src="(assets/[^"]+)"', "src=`"$rawBaseUrl/`$1`""
+                    $content = $content -replace 'src="(nihilZone\.jpg)"', "src=`"$rawBaseUrl/`$1`""
+                    $content = $content -replace '!\[([^\]]*)\]\((assets/[^)]+)\)', "![`$1]($rawBaseUrl/`$2)"
+                    $content = $content -replace '!\[([^\]]*)\]\((nihilZone\.jpg)\)', "![`$1]($rawBaseUrl/`$2)"
+                }
+                Add-TextEntry $archive $entryName $content
+            } else {
+                [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+                    $archive, (Join-Path $projectRoot $file), $entryName,
+                    [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+            }
         }
     } finally { $archive.Dispose() }
     Move-Item -LiteralPath $temporaryPath -Destination $outputPath -Force

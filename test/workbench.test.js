@@ -5,7 +5,8 @@ const path = require('node:path');
 const test = require('node:test');
 const { spawn } = require('node:child_process');
 const { JSDOM } = require('jsdom');
-const { installWorkbench, writeState, claimState, releaseState, restoreWorkbench, resolveWorkbench } = require('../src/workbench');
+const { installWorkbench, writeState, claimState, releaseState, restoreWorkbench, resolveWorkbench, liveOwners } = require('../src/workbench');
+const { run } = require('../src/uninstall');
 const { glowShadow } = require('../src/glow');
 
 function fixture(t) {
@@ -136,4 +137,42 @@ test('deactivation state clears styles; unloading disconnects the renderer', asy
 	r.window.document.querySelector('.vscode-tokens-styles').textContent = '.mtk9{color:#ff0000}';
 	await r.flush();
 	assert.equal(r.style(), null);
+});
+
+test('stale owner files from recycled PIDs stop counting as live windows', t => {
+	const files = fixture(t);
+	claimState(files, { brightness: 0.45 });
+	const owner = `${files.stateFile}.${process.pid}.owner`;
+	const old = new Date(Date.now() - 60 * 60 * 1000);
+	fs.utimesSync(owner, old, old);
+	assert.deepEqual(liveOwners(files), [], 'this PID is alive, but the claim was never refreshed');
+	assert.equal(fs.existsSync(owner), false);
+});
+
+test('the uninstall hook restores the workbench from the executable path', t => {
+	const root = fs.mkdtempSync(path.join(os.tmpdir(), 'gloria-uninstall-'));
+	t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+	// Per-commit nesting used by newer Windows builds: <install>/<commit>/resources/app.
+	const appRoot = path.join(root, 'a1b2c3', 'resources', 'app');
+	const workbench = path.join(appRoot, 'out', 'vs', 'code', 'electron-sandbox', 'workbench');
+	fs.mkdirSync(workbench, { recursive: true });
+	const original = '<html><head></head><body></body>\n</html>';
+	fs.writeFileSync(path.join(workbench, 'workbench.html'), original);
+	const files = resolveWorkbench(appRoot);
+	installWorkbench(files, path.join(__dirname, '..', 'src'));
+	assert.equal(run(path.join(root, 'Code.exe')), 1);
+	assert.equal(fs.readFileSync(files.htmlFile, 'utf8'), original);
+	assert.equal(fs.existsSync(files.scriptFile), false);
+});
+
+test('renderer glows by role map, so recolored roles keep glowing and unmapped colors stay flat', async t => {
+	const r = await renderer(t);
+	assert.match(r.style().textContent, /\.mtk3\{text-shadow:/, 'default map: #ff0000 is a glowing role');
+	assert.doesNotMatch(r.style().textContent, /\.mtk4\{text-shadow:/, 'strings never glow');
+	assert.match(r.style().textContent, /\.bracket-highlighting-0\{text-shadow:[^}]*--vscode-editorBracketHighlight-foreground1/);
+	assert.match(r.style().textContent, /\.bracket-highlighting-7\{text-shadow:[^}]*--vscode-editorBracketHighlight-foreground2/);
+	await r.update({ glowColors: { '40ff00': 'halo', bogus: 'halo', fdfdfd: 'nope' } });
+	assert.match(r.style().textContent, /\.mtk4\{text-shadow:[^}]*#40ff00/);
+	assert.doesNotMatch(r.style().textContent, /\.mtk3\{text-shadow:/);
+	assert.doesNotMatch(r.style().textContent, /\.mtk1\{text-shadow:/, 'invalid kinds are dropped');
 });

@@ -3,49 +3,74 @@ const vscode = require('vscode');
 const { findGrandparentTagRanges, parseHtmlElements } = require('./htmlGrandparents');
 const { findCssPunctuationRanges, findEmbeddedCssPunctuationRanges } = require('./cssBraces');
 const { normalizeGlowSettings, glowShadow } = require('./glow');
-const { resolveWorkbench, installWorkbench, claimState, releaseState, restoreWorkbench } = require('./workbench');
-const { registerControlPanel } = require('./controlPanel');
+const {
+	OWNER_HEARTBEAT_MS, resolveWorkbench, installWorkbench, isInstalled, liveOwners,
+	claimState, releaseState, restoreWorkbench
+} = require('./workbench');
+const { registerControlPanel, readCurrentState, glowColorsFor } = require('./controlPanel');
+
+// Builds published before the publisher rename; both copies would register the same commands.
+const LEGACY_EXTENSION_IDS = ['Nihil.gloria-theme'];
+const themePath = path.join(__dirname, '..', 'themes', 'gloria-color-theme.json');
+const usingGloria = () => vscode.workspace.getConfiguration('workbench').get('colorTheme') === 'Gloria';
 
 let shutdown;
 
-function readSettings() {
+function readGlowSettings() {
 	const config = vscode.workspace.getConfiguration('gloria');
-	const normalized = normalizeGlowSettings({
+	return normalizeGlowSettings({
 		brightness: config.get('brightness', 0.45),
 		disableGlow: config.get('disableGlow', false),
 		whiteGlowRadius: config.get('whiteGlowRadius', 25)
 	});
-	const customColors = vscode.workspace.getConfiguration('workbench').get('colorCustomizations')?.['[Gloria]'];
-	const customBg = customColors?.['editor.background'];
-	const customGutter = customColors?.['editorGutter.background'];
+}
+
+function readSettings() {
 	return {
-		...normalized,
-		...(customBg ? { editorBackground: customBg } : {}),
-		...(customGutter ? { gutterBackground: customGutter } : {})
+		...readGlowSettings(),
+		// Effective role colors (theme + customizations), so recolored roles keep glowing.
+		glowColors: glowColorsFor(readCurrentState(vscode, themePath).tokens)
 	};
 }
 
+function warnAboutLegacyCopies(context) {
+	for (const id of LEGACY_EXTENSION_IDS) {
+		if (id.toLowerCase() === context.extension?.id?.toLowerCase()) continue;
+		if (!vscode.extensions?.getExtension?.(id)) continue;
+		vscode.window.showWarningMessage(`Gloria is also installed under the old ID "${id}". Uninstall that copy: both register the same commands and patch the same workbench files.`);
+	}
+}
+
 function activate(context) {
+	// Runs first: if a legacy copy already registered our commands, the registrations below throw.
+	warnAboutLegacyCopies(context);
 	const files = resolveWorkbench(vscode.env.appRoot);
-	let restored = !vscode.workspace.getConfiguration('gloria').get('enableWorkbench', true);
-	const syncState = () => {
-		if (!files || restored) return;
-		claimState(files, readSettings());
-	};
 	const reportError = error => vscode.window.showErrorMessage(`Gloria: ${error.message}`);
+	// Installing the extension alone must not modify VS Code: patch only while Gloria is the active theme.
+	const wanted = () => vscode.workspace.getConfiguration('gloria').get('enableWorkbench', true) && usingGloria();
+	let claimed = false;
+
+	const promptReload = () => vscode.window.showInformationMessage(
+		'Gloria workbench styling installed. Reload the window to load it. VS Code may report its installation as modified.',
+		'Reload window'
+	).then(action => {
+		if (action) vscode.commands.executeCommand('workbench.action.reloadWindow');
+	});
+
 	const synchronize = () => {
+		if (!files) return;
 		try {
-			const enabled = vscode.workspace.getConfiguration('gloria').get('enableWorkbench', true);
-			if (!enabled) {
-				restored = true;
-				if (files) restoreWorkbench(files);
+			if (wanted()) {
+				claimState(files, readSettings());
+				const firstClaim = !claimed;
+				claimed = true;
+				// Install checks read several files; repeat them only when this window starts rendering Gloria.
+				if (firstClaim && installWorkbench(files, __dirname)) promptReload();
 			} else {
-				if (restored && files) {
-					restored = false;
-					installWorkbench(files, __dirname);
-					vscode.window.showInformationMessage('Gloria workbench styling enabled. Reload the window to load it.');
-				}
-				syncState();
+				const others = claimed ? releaseState(files) : liveOwners(files).length;
+				claimed = false;
+				// Another window may still render Gloria through a workspace-level theme override.
+				if (!others && isInstalled(files)) restoreWorkbench(files);
 			}
 		} catch (error) { reportError(error); }
 	};
@@ -54,7 +79,8 @@ function activate(context) {
 		if (!files) return;
 		try {
 			await vscode.workspace.getConfiguration('gloria').update('enableWorkbench', false, vscode.ConfigurationTarget.Global);
-			restored = true;
+			// Explicit request: restore even if another window still holds a claim.
+			claimed = false;
 			restoreWorkbench(files);
 			await vscode.window.showInformationMessage('Gloria workbench files restored. You can now disable or uninstall Gloria. Re-enable gloria.enableWorkbench to restore the custom styling.');
 		} catch (error) { reportError(error); }
@@ -64,32 +90,29 @@ function activate(context) {
 	const selectionContrast = registerSelectionContrast(context);
 	const controlPanel = registerControlPanel(vscode, context, path.join(__dirname, '..'));
 	context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(event => {
-		if (event.affectsConfiguration('gloria') || event.affectsConfiguration('workbench.colorCustomizations')) synchronize();
+		if (['gloria', 'workbench.colorTheme', 'workbench.colorCustomizations', 'editor.tokenColorCustomizations']
+			.some(section => event.affectsConfiguration(section))) synchronize();
 	}));
 
-	if (files && !restored) {
-		try {
-			syncState();
-			if (installWorkbench(files, __dirname)) {
-				vscode.window.showInformationMessage(
-					'Gloria styling updated. Reload the window to load it. VS Code may report its modified installation.',
-					'Reload window'
-				).then(action => {
-					if (action) vscode.commands.executeCommand('workbench.action.reloadWindow');
-				});
-			}
-		} catch (error) { reportError(error); }
-	}
+	synchronize();
+	// Re-claiming refreshes the owner file's mtime so other windows can tell it from a recycled PID.
+	const heartbeat = setInterval(() => { if (claimed) synchronize(); }, OWNER_HEARTBEAT_MS);
+	heartbeat.unref?.();
 	shutdown = () => {
+		clearInterval(heartbeat);
 		decorations.dispose();
 		selectionContrast.dispose();
 		controlPanel.dispose();
-		if (files && !restored) {
+		// Leave the patch in place on shutdown; the next startup would only reinstall it.
+		if (files && claimed) {
 			try { releaseState(files); } catch (error) { console.error(error); }
 		}
 	};
 }
 
+// Decoration CSS goes through `textDecoration: 'none; <more css>'`: VS Code concatenates that string
+// into a style rule unsanitized. It is the only way to set text-shadow or override token colors from an
+// extension, and an unsupported one: if VS Code ever sanitizes it, these decorations silently lose styling.
 function registerDynamicGlowDecorations(context) {
 	const timers = new Map();
 	const cache = new WeakMap();
@@ -100,7 +123,6 @@ function registerDynamicGlowDecorations(context) {
 		textDecoration: 'none; color: #569cd6 !important; text-shadow: none !important',
 		rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
 	});
-	const usingGloria = () => vscode.workspace.getConfiguration('workbench').get('colorTheme') === 'Gloria';
 
 	function rangesFor(document) {
 		const maximum = vscode.workspace.getConfiguration('gloria').get('maxDecorationFileSize', 1000000);
@@ -190,7 +212,7 @@ function registerDynamicGlowDecorations(context) {
 function createWhiteGlowDecorationType() {
 	return vscode.window.createTextEditorDecorationType({
 		color: '#fdfdfd',
-		textDecoration: `none; text-shadow: ${glowShadow('fdfdfd', readSettings())}; backface-visibility: hidden`,
+		textDecoration: `none; text-shadow: ${glowShadow('fdfdfd', readGlowSettings())}; backface-visibility: hidden`,
 		rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed
 	});
 }
@@ -198,7 +220,9 @@ function createWhiteGlowDecorationType() {
 function registerSelectionContrast(context) {
 	let disposed = false;
 	const createDecoration = () => {
-		const fg = vscode.workspace.getConfiguration('workbench').get('colorCustomizations')?.['[Gloria]']?.['editor.selectionForeground'] || '#fdfdfd';
+		const custom = vscode.workspace.getConfiguration('workbench').get('colorCustomizations')?.['[Gloria]']?.['editor.selectionForeground'];
+		// The value lands inside raw CSS (see textDecoration note above): accept hex colors only.
+		const fg = /^#[0-9a-f]{3,8}$/i.test(custom) ? custom : '#fdfdfd';
 		return vscode.window.createTextEditorDecorationType({
 			color: fg,
 			// Native editor.selectionForeground is only rendered by high-contrast themes.
@@ -209,8 +233,7 @@ function registerSelectionContrast(context) {
 	let decoration = createDecoration();
 	function update(editor) {
 		if (disposed || !editor) return;
-		const active = vscode.workspace.getConfiguration('workbench').get('colorTheme') === 'Gloria';
-		editor.setDecorations(decoration, active ? editor.selections.filter(selection => !selection.isEmpty) : []);
+		editor.setDecorations(decoration, usingGloria() ? editor.selections.filter(selection => !selection.isEmpty) : []);
 	}
 	function updateVisible() {
 		for (const editor of vscode.window.visibleTextEditors) update(editor);

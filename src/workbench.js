@@ -35,7 +35,12 @@ function ownerFile(files, pid) {
 	return `${files.stateFile}.${pid}.owner`;
 }
 
-function liveOwners(files) {
+// Windows recycles PIDs quickly, so a live PID alone does not prove ownership: owners re-claim
+// on a heartbeat (OWNER_HEARTBEAT_MS) and files older than OWNER_TTL_MS are treated as orphans.
+const OWNER_HEARTBEAT_MS = 2 * 60 * 1000;
+const OWNER_TTL_MS = 10 * 60 * 1000;
+
+function liveOwners(files, now = Date.now()) {
 	const directory = path.dirname(files.stateFile);
 	const prefix = path.basename(files.stateFile) + '.';
 	const owners = [];
@@ -43,14 +48,23 @@ function liveOwners(files) {
 		if (!name.startsWith(prefix) || !name.endsWith('.owner')) continue;
 		const pid = Number(name.slice(prefix.length, -6));
 		if (!Number.isInteger(pid) || pid <= 0) continue;
+		const file = path.join(directory, name);
 		try {
+			if (now - fs.statSync(file).mtimeMs > OWNER_TTL_MS) {
+				fs.unlinkSync(file);
+				continue;
+			}
 			process.kill(pid, 0);
-			owners.push(JSON.parse(fs.readFileSync(path.join(directory, name), 'utf8')));
+			owners.push(JSON.parse(fs.readFileSync(file, 'utf8')));
 		} catch (error) {
-			if (error.code === 'ESRCH') fs.unlinkSync(path.join(directory, name));
+			if (error.code === 'ESRCH') fs.rmSync(file, { force: true });
 		}
 	}
 	return owners;
+}
+
+function isInstalled(files) {
+	return fs.existsSync(files.scriptFile) || fs.readFileSync(files.htmlFile, 'utf8').includes(MARKER);
 }
 
 function claimState(files, settings, pid = process.pid) {
@@ -59,14 +73,17 @@ function claimState(files, settings, pid = process.pid) {
 	writeState(files, state);
 }
 
+// Returns the number of other windows still rendering Gloria.
 function releaseState(files, pid = process.pid) {
 	const owner = ownerFile(files, pid);
 	if (fs.existsSync(owner)) fs.unlinkSync(owner);
-	if (liveOwners(files).length) return;
+	const remaining = liveOwners(files).length;
+	if (remaining) return remaining;
 	writeState(files, { enabled: false });
 	// A second window can activate between the first check and the write.
 	const owners = liveOwners(files);
 	if (owners.length) writeState(files, owners[0]);
+	return owners.length;
 }
 
 function installWorkbench(files, sourceDirectory) {
@@ -79,7 +96,8 @@ function installWorkbench(files, sourceDirectory) {
 	const clean = html.replace(markerPattern, '');
 	if (!/<\/html\s*>/i.test(clean)) throw new Error('Workbench HTML has no closing html tag.');
 	const changed = !fs.existsSync(files.scriptFile) || fs.readFileSync(files.scriptFile, 'utf8') !== script;
-	fs.writeFileSync(files.scriptFile, script, 'utf8');
+	// Other windows may be loading this file; only rewrite it when the content actually differs.
+	if (changed) fs.writeFileSync(files.scriptFile, script, 'utf8');
 	const output = clean.replace(/<\/html\s*>/i, `${MARKER}\n</html>`);
 	if (output !== html) fs.writeFileSync(files.htmlFile, output, 'utf8');
 	return changed || !html.includes(MARKER);
@@ -101,4 +119,7 @@ function restoreWorkbench(files) {
 	}
 }
 
-module.exports = { resolveWorkbench, installWorkbench, writeState, claimState, releaseState, restoreWorkbench };
+module.exports = {
+	OWNER_HEARTBEAT_MS, resolveWorkbench, installWorkbench, isInstalled, liveOwners,
+	writeState, claimState, releaseState, restoreWorkbench
+};

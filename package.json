@@ -1,17 +1,22 @@
 {
 	"name": "gloria-theme",
 	"displayName": "プロジェクト_Gloria",
-	"description": "Temet Nosce",
-	"version": "1.0.8",
+	"description": "Luminous cyberpunk & retro-futuristic dark theme for VS Code featuring multi-layer neon glow, an interactive sidebar control panel, and Counter-Strike 2 syntax highlighting.",
+	"version": "1.0.9",
 	"icon": "nihilZone.jpg",
 	"author": "Nihil",
 	"publisher": "Nihilnia",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/projectGloria/GloriaTheme.git"
+	},
 	"engines": {
-		"vscode": "^1.60.0"
+		"vscode": "^1.82.0"
 	},
 	"scripts": {
 		"test": "node --test test/*.test.js",
-		"package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1"
+		"package": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package.ps1",
+		"vscode:uninstall": "node ./src/uninstall.js"
 	},
 	"extensionKind": [
 		"ui"
@@ -21,17 +26,15 @@
 		"Programming Languages"
 	],
 	"activationEvents": [
-		"onStartupFinished",
-		"onLanguage:html",
-		"onLanguage:css",
-		"onLanguage:cs2-cfg"
+		"onStartupFinished"
 	],
 	"main": "./src/extension.js",
 	"contributes": {
 		"languages": [{
 			"id": "cs2-cfg",
 			"aliases": ["Counter-Strike 2 Config", "CS2 CFG"],
-			"extensions": [".cfg"],
+			"filenames": ["autoexec.cfg"],
+			"filenamePatterns": ["**/csgo/cfg/**/*.cfg", "**/730/local/cfg/*.cfg"],
 			"configuration": "./language-configuration/cs2-cfg.json"
 		}],
 		"grammars": [{

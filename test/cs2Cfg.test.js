@@ -53,10 +53,15 @@ function expectToken(line, text, scope, color, occurrence = 0) {
 	return token;
 }
 
-test('CFG files register the CS2 grammar and comment controls', () => {
+test('CS2 config folders register the CS2 grammar without claiming every .cfg file', () => {
 	const language = manifest.contributes.languages.find(language => language.id === 'cs2-cfg');
-	assert.ok(language.extensions.includes('.cfg'));
-	assert.ok(manifest.activationEvents.includes('onLanguage:cs2-cfg'));
+	assert.equal(language.extensions, undefined, 'a blanket .cfg claim hijacks setup.cfg and other INI configs');
+	assert.ok(language.filenames.includes('autoexec.cfg'));
+	const claimed = file => language.filenamePatterns.some(pattern => path.posix.matchesGlob(file, pattern));
+	assert.ok(claimed('C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/cfg/practice.cfg'));
+	assert.ok(claimed('C:/Steam/steamapps/common/Counter-Strike Global Offensive/game/csgo/cfg/sub/nested.cfg'));
+	assert.ok(claimed('C:/Steam/userdata/123/730/local/cfg/config.cfg'));
+	assert.equal(claimed('/home/dev/project/setup.cfg'), false);
 	const contribution = manifest.contributes.grammars.find(grammar => grammar.language === language.id);
 	assert.equal(contribution.scopeName, 'source.cs2cfg');
 	assert.ok(fs.existsSync(path.join(__dirname, '..', contribution.path)));
@@ -87,13 +92,13 @@ test('unquoted numbers and boolean values retain their literal styling', () => {
 	expectToken('cl_crosshair_gap -2.5', '-2.5', 'constant.numeric', '#FFFF00');
 	expectToken('volume .5', '.5', 'constant.numeric', '#FFFF00');
 	expectToken('some_value 1e-3', '1e-3', 'constant.numeric', '#FFFF00');
-	expectToken('cl_crosshair_recoil false', 'false', 'constant.language.boolean', '#FEFEFE');
-	expectToken('cl_crosshair_recoil "true"', 'true', 'constant.language.boolean', '#FEFEFE');
+	expectToken('cl_crosshair_recoil false', 'false', 'constant.language.boolean', '#FFFF00');
+	expectToken('cl_crosshair_recoil "true"', 'true', 'constant.language.boolean', '#FFFF00');
 });
 
 test('alias declarations support quoted and unquoted names and preserve command strings', () => {
 	const line = 'alias "crosshair_primary" "cl_crosshair_thickness 1; alias crosshair_toggle secondary"';
-	expectToken(line, 'alias', 'keyword.control', '#FDFDFD');
+	expectToken(line, 'alias', 'keyword.control', '#D580FF');
 	expectToken(line, 'crosshair_primary', 'entity.name.function.alias', '#FDFDFD');
 	expectToken(line, 'cl_crosshair_thickness', 'string.quoted.double', '#40FF00');
 	expectToken(line, ';', 'string.quoted.double', '#40FF00');

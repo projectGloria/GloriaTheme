@@ -7,16 +7,18 @@ const { createRequire } = require('node:module');
 const test = require('node:test');
 const { resolveWorkbench } = require('../src/workbench');
 
-function setup(t, text = '<div><section><span>x</span></section></div>', initialGloria = {}) {
+function setup(t, text = '<div><section><span>x</span></section></div>', initialGloria = {}, options = {}) {
 	const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'gloria-extension-'));
 	const html = path.join(directory, 'out/vs/code/electron-sandbox/workbench/workbench.html');
 	fs.mkdirSync(path.dirname(html), { recursive: true });
 	fs.writeFileSync(html, '<html><head></head><body></body>\n</html>');
+	if (options.beforeActivate) options.beforeActivate(resolveWorkbench(directory));
 	const handlers = new Map();
 	const commands = new Map();
-	const config = { gloria: { ...initialGloria }, workbench: { colorTheme: 'Gloria' }, editor: {} };
+	const config = { gloria: { ...initialGloria }, workbench: { colorTheme: options.colorTheme ?? 'Gloria' }, editor: { ...options.editor } };
 	const subscriptions = [];
 	const errors = [];
+	const warnings = [];
 	const statusBarItems = [];
 	const webviewPanels = [];
 	let reads = 0;
@@ -37,6 +39,7 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 	const change = key => emit('configuration', { affectsConfiguration: name => key === name || key.startsWith(name + '.') });
 	const vscode = {
 		env: { appRoot: directory },
+		extensions: { getExtension: id => (options.installed || []).includes(id) ? { id } : undefined },
 		ConfigurationTarget: { Global: 1 }, DecorationRangeBehavior: { ClosedClosed: 1 },
 		StatusBarAlignment: { Right: 2 },
 		Range: class { constructor(start, end) { this.start = start; this.end = end; } },
@@ -70,7 +73,8 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 			onDidChangeVisibleTextEditors: event('visible'), onDidChangeActiveTextEditor: event('active'),
 			onDidChangeTextEditorSelection: event('selection'),
 			showInformationMessage: async () => undefined,
-			showErrorMessage: message => errors.push(message)
+			showErrorMessage: message => errors.push(message),
+			showWarningMessage: message => warnings.push(message)
 		},
 		workspace: {
 			getConfiguration(scope) { return {
@@ -86,9 +90,9 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 	const module = { exports: {} };
 	vm.runInNewContext(fs.readFileSync(source, 'utf8'), {
 		module, require: name => name === 'vscode' ? vscode : localRequire(name),
-		__dirname: path.dirname(source), console: { ...console, error: error => errors.push(error.message) }, setTimeout, clearTimeout
+		__dirname: path.dirname(source), console: { ...console, error: error => errors.push(error.message) }, setTimeout, clearTimeout, setInterval, clearInterval
 	}, { filename: source });
-	module.exports.activate({ subscriptions });
+	module.exports.activate({ subscriptions, extension: { id: 'Nihilnia.gloria-theme' } });
 	t.after(() => {
 		module.exports.deactivate();
 		for (const subscription of subscriptions) subscription.dispose();
@@ -97,7 +101,7 @@ function setup(t, text = '<div><section><span>x</span></section></div>', initial
 		assert.deepEqual(errors, []);
 	});
 	const structural = editor => Array.from(editor.decorations.entries()).find(([type]) => !type.options.textDecoration.includes('!important'));
-	return { config, commands, emit, change, editors, document, statusBarItems, webviewPanels,
+	return { config, commands, emit, change, editors, document, statusBarItems, webviewPanels, warnings,
 		files: resolveWorkbench(directory), structural, reads: () => reads, extension: module.exports };
 }
 
@@ -208,4 +212,69 @@ test('status bar rabbit icon opens control panel webview and live updates apply 
 	assert.equal(r.config.workbench.colorCustomizations, undefined);
 	assert.equal(r.config.editor.tokenColorCustomizations, undefined);
 	assert.equal(r.config.gloria.brightness, 0.45);
+});
+
+test('installing Gloria does not patch VS Code until it is the active theme, and switching away unpatches', t => {
+	const r = setup(t, undefined, {}, { colorTheme: 'Other' });
+	assert.equal(fs.existsSync(r.files.scriptFile), false);
+	assert.doesNotMatch(fs.readFileSync(r.files.htmlFile, 'utf8'), /GLORIA/);
+	r.config.workbench.colorTheme = 'Gloria';
+	r.change('workbench.colorTheme');
+	assert.equal(fs.existsSync(r.files.scriptFile), true);
+	assert.match(fs.readFileSync(r.files.htmlFile, 'utf8'), /GLORIA/);
+	r.config.workbench.colorTheme = 'Other';
+	r.change('workbench.colorTheme');
+	assert.equal(fs.existsSync(r.files.scriptFile), false);
+	assert.doesNotMatch(fs.readFileSync(r.files.htmlFile, 'utf8'), /GLORIA/);
+});
+
+test('starting on another theme removes a patch left behind by an earlier session', t => {
+	const { installWorkbench } = require('../src/workbench');
+	const r = setup(t, undefined, {}, {
+		colorTheme: 'Other',
+		beforeActivate: files => installWorkbench(files, path.join(__dirname, '..', 'src'))
+	});
+	assert.equal(fs.existsSync(r.files.scriptFile), false);
+	assert.doesNotMatch(fs.readFileSync(r.files.htmlFile, 'utf8'), /GLORIA/);
+});
+
+test('the state file carries a role glow map that follows token customizations', async t => {
+	const r = setup(t);
+	const state = () => JSON.parse(fs.readFileSync(r.files.stateFile));
+	assert.deepEqual(state().glowColors, { ff0000: 'ember', d580ff: 'halo', fdfdfd: 'halo', '1e90ff': 'bracket' });
+	r.commands.get('gloria.openControlPanel')();
+	await r.webviewPanels[0].webview.send({ type: 'update', state: { tokens: { keywords: '#00ffff' } } });
+	assert.equal(state().glowColors['00ffff'], 'halo', 'recolored keywords keep their glow');
+	assert.equal(state().glowColors.d580ff, undefined);
+});
+
+test('a copy installed under the pre-rename publisher triggers a warning', t => {
+	const r = setup(t, undefined, {}, { installed: ['Nihil.gloria-theme'] });
+	assert.equal(r.warnings.length, 1);
+	assert.match(r.warnings[0], /Nihil\.gloria-theme/);
+});
+
+test('control panel enforces a CSP, rejects invalid input and preserves hand-written customizations', async t => {
+	const own = { scope: 'comment', settings: { foreground: '#123456' } };
+	const r = setup(t, undefined, {}, {
+		editor: { tokenColorCustomizations: { '[Gloria]': { textMateRules: [own] } } }
+	});
+	r.commands.get('gloria.openControlPanel')();
+	const { webview } = r.webviewPanels[0];
+	const nonce = /script-src 'nonce-([^']+)'/.exec(webview.html)?.[1];
+	assert.ok(nonce);
+	assert.ok(webview.html.includes(`<script nonce="${nonce}">`));
+	assert.deepEqual(webview.options.localResourceRoots, []);
+
+	await webview.send({ type: 'update', state: { colors: { 'editor.background': 'red; x: y' }, tokens: { strings: 'javascript:' } } });
+	assert.equal(r.config.workbench.colorCustomizations, undefined);
+	assert.deepEqual(r.config.editor.tokenColorCustomizations['[Gloria]'].textMateRules, [own]);
+
+	await webview.send({ type: 'update', state: { tokens: { strings: '#00ff00' } } });
+	const rules = r.config.editor.tokenColorCustomizations['[Gloria]'].textMateRules;
+	assert.equal(rules.length, 2);
+	assert.ok(rules[1].scope.includes('support.constant.property-value.css'), 'scopes come from every rule the control owns');
+
+	await r.commands.get('gloria.resetColors')();
+	assert.deepEqual(r.config.editor.tokenColorCustomizations['[Gloria]'].textMateRules, [own]);
 });

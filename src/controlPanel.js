@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { normalizeGlowSettings } = require('./glow');
@@ -28,139 +29,86 @@ const UI_COLOR_CONTROLS = [
 	{ key: 'terminal.foreground', label: 'Terminal Foreground', group: 'Terminal' }
 ];
 
+// Each control owns whole theme rules by name; customization scopes are derived from those rules,
+// so a control recolors exactly what the theme colors. `glow` marks roles the renderer halos.
 const TOKEN_CONTROLS = [
 	{
 		id: 'variables',
 		label: 'Variables & Properties',
-		ruleNames: ['Variables and Parameters', 'Object Properties', 'CSS Property Names (Non-glowing)', 'CSS Variables (Non-glowing)', 'Python Interpolation Expressions'],
-		semantic: ['variable', 'parameter', 'property'],
-		scopes: [
-			'variable', 'entity.name.variable', 'variable.parameter', 'variable.other',
-			'support.variable', 'meta.block variable', 'variable.other.readwrite', 'variable.language',
-			'variable.other.property', 'meta.property.object', 'support.type.property-name'
-		]
+		glow: 'ember',
+		ruleNames: ['Variables and Parameters', 'Object Properties', 'CSS Property Names (Red Glow)', 'CSS Variables (Red Glow)', 'Python Interpolation Expressions'],
+		semantic: ['variable', 'parameter', 'property']
 	},
 	{
 		id: 'strings',
 		label: 'Strings & CSS Values',
 		ruleNames: ['String', 'CSS Values (Non-glowing)', 'Markdown Code (Non-glowing)'],
-		semantic: ['string'],
-		scopes: ['string', 'string.quoted', 'string.template', 'punctuation.definition.string']
+		semantic: ['string']
 	},
 	{
 		id: 'keywords',
-		label: 'Keywords & CSS Selectors',
-		ruleNames: ['Keyword', 'CSS Selectors (White Glow)', 'CSS Curly Braces (White Glow)'],
-		semantic: ['keyword'],
-		scopes: ['keyword', 'keyword.control', 'storage', 'storage.type', 'storage.modifier', 'keyword.operator.new']
+		label: 'Keywords',
+		glow: 'halo',
+		ruleNames: ['Keyword'],
+		semantic: ['keyword']
+	},
+	{
+		id: 'selectors',
+		label: 'CSS Selectors & Braces',
+		glow: 'halo',
+		ruleNames: ['CSS Selectors (White Glow)', 'CSS Curly Braces (White Glow)'],
+		semantic: []
 	},
 	{
 		id: 'functions',
 		label: 'Functions & Methods',
+		glow: 'halo',
 		ruleNames: ['Function'],
-		semantic: ['function', 'method'],
-		scopes: ['entity.name.function', 'variable.function', 'support.function', 'meta.function-call']
+		semantic: ['function', 'method']
 	},
 	{
 		id: 'types',
 		label: 'Types, Classes & Links',
 		ruleNames: ['Types and Classes', 'HTML Attributes', 'CSS Functions (Non-glowing)', 'Markdown Links (Non-glowing)'],
-		semantic: ['class', 'type'],
-		scopes: [
-			'entity.name.type', 'entity.name.class', 'meta.attribute.class.html',
-			'entity.other.inherited-class', 'support.type', 'support.class', 'entity.other.attribute-name.html'
-		]
+		semantic: ['class', 'type']
 	},
 	{
 		id: 'numbers',
-		label: 'Numbers & Units',
-		ruleNames: ['Number', 'HTML Character Entities', 'CSS Units (Non-glowing)'],
-		semantic: [],
-		scopes: ['constant.numeric', 'constant.character.entity', 'source.css keyword.other.unit']
+		label: 'Numbers, Units & Literals',
+		ruleNames: ['Number', 'Language Constants', 'HTML Character Entities', 'CSS Units (Non-glowing)'],
+		semantic: []
 	},
 	{
 		id: 'brackets',
 		label: 'Glowing Brackets',
+		glow: 'bracket',
 		ruleNames: ['Brackets (Glowing)'],
 		semantic: [],
-		scopes: [
-			'meta.brace', 'punctuation.definition.block', 'punctuation.definition.array',
-			'punctuation.definition.parameters', 'punctuation.section.block', 'punctuation.section.array',
-			'punctuation.section.parens', 'punctuation.section.class', 'punctuation.section.method',
-			'punctuation.section.function'
-		],
-		uiMirrors: [
-			'editorBracketHighlight.foreground1', 'editorBracketHighlight.foreground2',
-			'editorBracketHighlight.foreground3', 'editorBracketHighlight.foreground4',
-			'editorBracketHighlight.foreground5', 'editorBracketHighlight.foreground6'
-		]
+		// Only the first colorization level follows this token; levels 2-6 keep their own theme colors.
+		uiMirrors: ['editorBracketHighlight.foreground1']
 	},
 	{
 		id: 'comments',
 		label: 'Comments & Quotes',
 		ruleNames: ['Comment', 'Markdown Quotes (Non-glowing)', 'Python Docstring Delimiters'],
 		semantic: [],
-		scopes: ['comment', 'punctuation.definition.comment', 'string.quoted.docstring.multi.python'],
 		fontStyle: 'italic'
 	},
 	{
 		id: 'headers',
 		label: 'Markdown Headers',
+		glow: 'ember',
 		ruleNames: ['Markdown Headers (Red Glow)'],
 		semantic: [],
-		scopes: [
-			'markup.heading.markdown', 'heading.1.markdown', 'heading.2.markdown',
-			'heading.3.markdown', 'heading.4.markdown', 'heading.5.markdown',
-			'heading.6.markdown', 'entity.name.section.markdown', 'punctuation.definition.heading.markdown'
-		],
 		fontStyle: 'bold'
 	},
 	{
 		id: 'tags',
 		label: 'HTML/CSS Tags & Parens',
 		ruleNames: ['Tag Fallback (Non-glowing)', 'HTML Tag Punctuation', 'CSS Round Brackets (Non-glowing)'],
-		semantic: [],
-		scopes: ['entity.name.tag', 'punctuation.definition.tag', 'punctuation.definition.tag.begin.html', 'punctuation.definition.tag.end.html']
+		semantic: []
 	}
 ];
-
-const ORIGINAL_DEFAULTS = {
-	colors: {
-		'editor.background': '#000c18',
-		'editor.foreground': '#fefefe',
-		'editor.selectionBackground': '#800000',
-		'editor.selectionForeground': '#fdfdfd',
-		'editor.inactiveSelectionBackground': '#00FF41',
-		'editorCursor.foreground': '#ffffff',
-		'editorGutter.background': '#000c18',
-		'editorLineNumber.foreground': '#808080',
-		'editorLineNumber.activeForeground': '#ff0000',
-		'editorGroupHeader.tabsBackground': '#000c18',
-		'tab.activeBackground': '#0A0A0A',
-		'tab.inactiveBackground': '#030306',
-		'tab.activeBorder': '#ff4d4d',
-		'titleBar.activeBackground': '#030306',
-		'sideBar.background': '#000c18',
-		'activityBar.background': '#000000',
-		'activityBar.activeBorder': '#00ffff',
-		'statusBar.background': '#000000',
-		'list.hoverBackground': '#800000',
-		'list.activeSelectionBackground': '#061F38',
-		'terminal.foreground': '#40FF00'
-	},
-	tokens: {
-		variables: '#ff0000',
-		strings: '#40ff00',
-		keywords: '#fdfdfd',
-		functions: '#fdfdfd',
-		types: '#4ec9b0',
-		numbers: '#ffff00',
-		brackets: '#1e90ff',
-		comments: '#808080',
-		headers: '#ff0001',
-		tags: '#569CD6'
-	}
-};
 
 const PRESETS = {
 	default: {
@@ -182,8 +130,8 @@ const PRESETS = {
 			'sideBar.background': '#000802',
 			'activityBar.background': '#000802',
 			'statusBar.background': '#000802',
-			'editor.selectionBackground': '#005515',
-			'editor.inactiveSelectionBackground': '#00FF41',
+			'editor.selectionBackground': '#00aa2a80',
+			'editor.inactiveSelectionBackground': '#00ff417f',
 			'editorLineNumber.activeForeground': '#00FF41',
 			'tab.activeBorder': '#00FF41',
 			'activityBar.activeBorder': '#00FF41',
@@ -206,7 +154,7 @@ const PRESETS = {
 			'tab.activeBackground': '#020813',
 			'tab.inactiveBackground': '#01050c',
 			'sideBar.background': '#020813',
-			'editor.selectionBackground': '#004b6e',
+			'editor.selectionBackground': '#0096dc80',
 			'editor.inactiveSelectionBackground': '#00ffff66',
 			'editorLineNumber.activeForeground': '#00ffff',
 			'tab.activeBorder': '#00ffff',
@@ -228,7 +176,7 @@ const PRESETS = {
 			'tab.activeBackground': '#090002',
 			'tab.inactiveBackground': '#050001',
 			'sideBar.background': '#090002',
-			'editor.selectionBackground': '#a80000',
+			'editor.selectionBackground': '#ff000099',
 			'editor.inactiveSelectionBackground': '#ff003380',
 			'editorLineNumber.activeForeground': '#ff0033',
 			'tab.activeBorder': '#ff0033',
@@ -242,34 +190,48 @@ const PRESETS = {
 	}
 };
 
-function loadThemeFile(themePath) {
-	return JSON.parse(fs.readFileSync(themePath, 'utf8'));
+const HEX_COLOR = /^#[0-9a-f]{6}([0-9a-f]{2})?$/i;
+
+// The shipped theme file is read-only at runtime (customizations live in settings), so parse it once.
+let themeCache;
+function loadTheme(themePath) {
+	if (themeCache?.path !== themePath) themeCache = { path: themePath, theme: JSON.parse(fs.readFileSync(themePath, 'utf8')) };
+	return themeCache.theme;
 }
 
-function getBaseDefaults() {
-	return {
-		colors: { ...ORIGINAL_DEFAULTS.colors },
-		tokens: { ...ORIGINAL_DEFAULTS.tokens }
-	};
+function rulesFor(theme, item) {
+	return theme.tokenColors.filter(rule => item.ruleNames.includes(rule.name));
 }
 
-function getThemeFileValues(themePath) {
-	const theme = loadThemeFile(themePath);
+function scopesFor(theme, item) {
+	return [...new Set(rulesFor(theme, item).flatMap(rule => [].concat(rule.scope)))];
+}
+
+// The theme file is the single source of defaults: no hand-maintained copy to drift from it.
+function getDefaults(themePath) {
+	const theme = loadTheme(themePath);
 	const colors = {};
-	for (const item of UI_COLOR_CONTROLS) {
-		colors[item.key] = theme.colors[item.key] || ORIGINAL_DEFAULTS.colors[item.key] || '#000000';
-	}
+	for (const item of UI_COLOR_CONTROLS) colors[item.key] = theme.colors[item.key];
 	const tokens = {};
-	for (const item of TOKEN_CONTROLS) {
-		const rule = theme.tokenColors.find(entry => item.ruleNames.includes(entry.name));
-		tokens[item.id] = rule?.settings?.foreground || ORIGINAL_DEFAULTS.tokens[item.id] || '#fefefe';
-	}
+	for (const item of TOKEN_CONTROLS) tokens[item.id] = rulesFor(theme, item)[0]?.settings?.foreground;
 	return { colors, tokens };
 }
 
+// Maps each glowing role's current 6-digit color to its glow kind for the renderer.
+function glowColorsFor(tokens) {
+	const colors = {};
+	for (const item of TOKEN_CONTROLS) {
+		const hex = /^#([0-9a-f]{6})/i.exec(tokens[item.id] || '')?.[1].toLowerCase();
+		// First role wins on a shared color; both render through one .mtkN class anyway.
+		if (item.glow && hex && !colors[hex]) colors[hex] = item.glow;
+	}
+	return colors;
+}
+
+const isPanelRule = rule => typeof rule?.name === 'string' && rule.name.startsWith('gloria.');
+
 function readCurrentState(vscode, themePath) {
-	const defaults = getBaseDefaults();
-	const fileValues = getThemeFileValues(themePath);
+	const defaults = getDefaults(themePath);
 	const gloriaConfig = vscode.workspace.getConfiguration('gloria');
 	const workbenchConfig = vscode.workspace.getConfiguration('workbench');
 	const editorConfig = vscode.workspace.getConfiguration('editor');
@@ -277,19 +239,15 @@ function readCurrentState(vscode, themePath) {
 	const colorCustomizations = workbenchConfig.get?.('colorCustomizations', {})?.[THEME_KEY] || {};
 	const tokenCustomizations = editorConfig.get?.('tokenColorCustomizations', {})?.[THEME_KEY]?.textMateRules || [];
 
-	const colors = { ...fileValues.colors };
+	const colors = { ...defaults.colors };
 	for (const item of UI_COLOR_CONTROLS) {
-		if (typeof colorCustomizations[item.key] === 'string') {
-			colors[item.key] = colorCustomizations[item.key];
-		}
+		if (typeof colorCustomizations[item.key] === 'string') colors[item.key] = colorCustomizations[item.key];
 	}
 
-	const tokens = { ...fileValues.tokens };
+	const tokens = { ...defaults.tokens };
 	for (const item of TOKEN_CONTROLS) {
-		const customRule = tokenCustomizations.find(rule => rule.name === `gloria.${item.id}`);
-		if (customRule?.settings?.foreground) {
-			tokens[item.id] = customRule.settings.foreground;
-		}
+		const customRule = tokenCustomizations.find(rule => rule?.name === `gloria.${item.id}`);
+		if (customRule?.settings?.foreground) tokens[item.id] = customRule.settings.foreground;
 	}
 
 	const glow = normalizeGlowSettings({
@@ -298,128 +256,102 @@ function readCurrentState(vscode, themePath) {
 		whiteGlowRadius: gloriaConfig.get('whiteGlowRadius', 25)
 	});
 
+	return { defaults, colors, tokens, glow, enableWorkbench: gloriaConfig.get('enableWorkbench', true) };
+}
+
+// Webview messages end up in settings.json: keep known keys with valid hex values only.
+// Missing keys mean "leave as is" in applyCustomizations.
+function sanitizeState(raw) {
+	const pick = (source, keys) => Object.fromEntries(keys
+		.filter(key => typeof source?.[key] === 'string' && HEX_COLOR.test(source[key]))
+		.map(key => [key, source[key]]));
 	return {
-		defaults,
-		colors,
-		tokens,
-		glow,
-		enableWorkbench: gloriaConfig.get('enableWorkbench', true)
+		colors: pick(raw?.colors, UI_COLOR_CONTROLS.map(item => item.key)),
+		tokens: pick(raw?.tokens, TOKEN_CONTROLS.map(item => item.id)),
+		...(raw?.glow && typeof raw.glow === 'object' ? { glow: normalizeGlowSettings(raw.glow) } : {}),
+		...(typeof raw?.enableWorkbench === 'boolean' ? { enableWorkbench: raw.enableWorkbench } : {})
 	};
 }
 
+// Status bar debugging/no-folder colors are deliberately not mirrored: they must stay distinct.
 const MIRROR_COLOR_KEYS = {
 	'editor.selectionBackground': ['selection.background'],
 	'editorGroupHeader.tabsBackground': ['editorGroupHeader.noTabsBackground'],
 	'tab.activeBackground': ['tab.unfocusedActiveBackground'],
 	'tab.inactiveBackground': ['tab.unfocusedInactiveBackground'],
 	'titleBar.activeBackground': ['titleBar.inactiveBackground'],
-	'sideBar.background': ['sideBarSectionHeader.background'],
-	'statusBar.background': ['statusBar.noFolderBackground', 'statusBar.debuggingBackground']
+	'sideBar.background': ['sideBarSectionHeader.background']
 };
 
+const sameColor = (first, second) => (first || '').toLowerCase() === (second || '').toLowerCase();
+
+// Only keys and rules the panel manages are touched, so hand-written [Gloria] customizations survive
+// both edits and Reset. `undefined` values (invalid or absent input) leave the current setting alone.
 async function applyCustomizations(vscode, themePath, nextState, isReset = false) {
-	const defaults = getBaseDefaults();
+	const theme = loadTheme(themePath);
+	const defaults = getDefaults(themePath);
 	const workbenchConfig = vscode.workspace.getConfiguration('workbench');
 	const editorConfig = vscode.workspace.getConfiguration('editor');
 	const gloriaConfig = vscode.workspace.getConfiguration('gloria');
-
-	// 1. Update workbench.colorCustomizations
-	const allColorCustomizations = { ...(workbenchConfig.get?.('colorCustomizations') || {}) };
-	const themeColors = isReset ? {} : { ...(allColorCustomizations[THEME_KEY] || {}) };
-
-	if (!isReset) {
-		for (const item of UI_COLOR_CONTROLS) {
-			const value = nextState.colors?.[item.key];
-			const mirrors = MIRROR_COLOR_KEYS[item.key] || [];
-			if (value && value.toLowerCase() !== defaults.colors[item.key].toLowerCase()) {
-				themeColors[item.key] = value;
-				for (const m of mirrors) themeColors[m] = value;
-			} else {
-				delete themeColors[item.key];
-				for (const m of mirrors) delete themeColors[m];
-			}
+	const setOrClear = (target, keys, value, fallback) => {
+		if (!isReset && value === undefined) return;
+		for (const key of keys) {
+			if (isReset || sameColor(value, fallback)) delete target[key];
+			else target[key] = value;
 		}
+	};
+	const writeScoped = async (config, section, all, scoped) => {
+		if (Object.keys(scoped).length) all[THEME_KEY] = scoped;
+		else delete all[THEME_KEY];
+		await config.update?.(section, Object.keys(all).length ? all : undefined, vscode.ConfigurationTarget.Global);
+	};
 
-		// Mirror glowing bracket color to native bracket highlight colors
-		for (const tokenItem of TOKEN_CONTROLS) {
-			if (!tokenItem.uiMirrors) continue;
-			const val = nextState.tokens?.[tokenItem.id];
-			const isCustom = val && val.toLowerCase() !== defaults.tokens[tokenItem.id].toLowerCase();
-			for (const mirrorKey of tokenItem.uiMirrors) {
-				if (isCustom) themeColors[mirrorKey] = val;
-				else delete themeColors[mirrorKey];
-			}
-		}
+	// 1. workbench.colorCustomizations
+	const allColors = { ...(workbenchConfig.get?.('colorCustomizations') || {}) };
+	const themeColors = { ...(allColors[THEME_KEY] || {}) };
+	for (const item of UI_COLOR_CONTROLS) {
+		setOrClear(themeColors, [item.key, ...(MIRROR_COLOR_KEYS[item.key] || [])], nextState.colors?.[item.key], defaults.colors[item.key]);
+	}
+	for (const item of TOKEN_CONTROLS) {
+		if (item.uiMirrors) setOrClear(themeColors, item.uiMirrors, nextState.tokens?.[item.id], defaults.tokens[item.id]);
+	}
+	await writeScoped(workbenchConfig, 'colorCustomizations', allColors, themeColors);
+
+	// 2. editor.tokenColorCustomizations + editor.semanticTokenColorCustomizations
+	const allTokens = { ...(editorConfig.get?.('tokenColorCustomizations') || {}) };
+	const themeTokens = { ...(allTokens[THEME_KEY] || {}) };
+	const previousRules = themeTokens.textMateRules || [];
+	const allSemantic = { ...(editorConfig.get?.('semanticTokenColorCustomizations') || {}) };
+	const themeSemantic = { ...(allSemantic[THEME_KEY] || {}) };
+	const semanticRules = { ...(themeSemantic.rules || {}) };
+	const textMateRules = previousRules.filter(rule => !isPanelRule(rule));
+
+	for (const item of TOKEN_CONTROLS) {
+		const previous = previousRules.find(rule => rule?.name === `gloria.${item.id}`)?.settings?.foreground;
+		const value = isReset ? undefined : nextState.tokens?.[item.id] ?? previous;
+		for (const key of item.semantic) delete semanticRules[key];
+		if (!value || sameColor(value, defaults.tokens[item.id])) continue;
+		const settings = { foreground: value };
+		if (item.fontStyle) settings.fontStyle = item.fontStyle;
+		textMateRules.push({ name: `gloria.${item.id}`, scope: scopesFor(theme, item), settings });
+		for (const key of item.semantic) semanticRules[key] = value;
 	}
 
-	if (Object.keys(themeColors).length > 0) {
-		allColorCustomizations[THEME_KEY] = themeColors;
-	} else {
-		delete allColorCustomizations[THEME_KEY];
-	}
-	await workbenchConfig.update?.(
-		'colorCustomizations',
-		Object.keys(allColorCustomizations).length ? allColorCustomizations : undefined,
-		vscode.ConfigurationTarget.Global
-	);
+	if (textMateRules.length) themeTokens.textMateRules = textMateRules;
+	else delete themeTokens.textMateRules;
+	await writeScoped(editorConfig, 'tokenColorCustomizations', allTokens, themeTokens);
 
-	// 2. Update editor.tokenColorCustomizations & editor.semanticTokenColorCustomizations
-	const allTokenCustomizations = { ...(editorConfig.get?.('tokenColorCustomizations') || {}) };
-	const allSemanticCustomizations = { ...(editorConfig.get?.('semanticTokenColorCustomizations') || {}) };
-	const textMateRules = [];
-	const semanticRules = {};
+	if (Object.keys(semanticRules).length) themeSemantic.rules = semanticRules;
+	else delete themeSemantic.rules;
+	await writeScoped(editorConfig, 'semanticTokenColorCustomizations', allSemantic, themeSemantic);
 
-	if (!isReset) {
-		for (const item of TOKEN_CONTROLS) {
-			const value = nextState.tokens?.[item.id];
-			if (value && value.toLowerCase() !== defaults.tokens[item.id].toLowerCase()) {
-				const settings = { foreground: value };
-				if (item.fontStyle) settings.fontStyle = item.fontStyle;
-				textMateRules.push({
-					name: `gloria.${item.id}`,
-					scope: item.scopes,
-					settings
-				});
-				for (const semKey of item.semantic) {
-					semanticRules[semKey] = value;
-				}
-			}
-		}
-	}
-
-	if (textMateRules.length > 0) {
-		allTokenCustomizations[THEME_KEY] = { textMateRules };
-	} else {
-		delete allTokenCustomizations[THEME_KEY];
-	}
-	await editorConfig.update?.(
-		'tokenColorCustomizations',
-		Object.keys(allTokenCustomizations).length ? allTokenCustomizations : undefined,
-		vscode.ConfigurationTarget.Global
-	);
-
-	if (Object.keys(semanticRules).length > 0) {
-		allSemanticCustomizations[THEME_KEY] = { enabled: true, rules: semanticRules };
-	} else {
-		delete allSemanticCustomizations[THEME_KEY];
-	}
-	await editorConfig.update?.(
-		'semanticTokenColorCustomizations',
-		Object.keys(allSemanticCustomizations).length ? allSemanticCustomizations : undefined,
-		vscode.ConfigurationTarget.Global
-	);
-
-	// 3. Update Gloria glow settings if changed
+	// 3. Gloria glow settings
 	if (nextState.glow) {
 		const normalized = normalizeGlowSettings(nextState.glow);
-		if (gloriaConfig.get('brightness') !== normalized.brightness) {
-			await gloriaConfig.update('brightness', normalized.brightness, vscode.ConfigurationTarget.Global);
-		}
-		if (gloriaConfig.get('whiteGlowRadius') !== normalized.whiteGlowRadius) {
-			await gloriaConfig.update('whiteGlowRadius', normalized.whiteGlowRadius, vscode.ConfigurationTarget.Global);
-		}
-		if (gloriaConfig.get('disableGlow') !== normalized.disableGlow) {
-			await gloriaConfig.update('disableGlow', normalized.disableGlow, vscode.ConfigurationTarget.Global);
+		for (const key of ['brightness', 'whiteGlowRadius', 'disableGlow']) {
+			if (gloriaConfig.get(key) !== normalized[key]) {
+				await gloriaConfig.update(key, normalized[key], vscode.ConfigurationTarget.Global);
+			}
 		}
 	}
 	if (typeof nextState.enableWorkbench === 'boolean' && gloriaConfig.get('enableWorkbench') !== nextState.enableWorkbench) {
@@ -427,55 +359,20 @@ async function applyCustomizations(vscode, themePath, nextState, isReset = false
 	}
 }
 
-function writeThemeJson(themePath, state) {
-	const theme = loadThemeFile(themePath);
-	for (const item of UI_COLOR_CONTROLS) {
-		const val = state.colors?.[item.key];
-		if (val) {
-			theme.colors[item.key] = val;
-			for (const m of (MIRROR_COLOR_KEYS[item.key] || [])) {
-				theme.colors[m] = val;
-			}
-		}
-	}
-	for (const item of TOKEN_CONTROLS) {
-		const val = state.tokens?.[item.id];
-		if (!val) continue;
-		for (const rule of theme.tokenColors) {
-			if (item.ruleNames.includes(rule.name)) {
-				rule.settings.foreground = val;
-			}
-		}
-		for (const semKey of item.semantic) {
-			if (theme.semanticTokenColors) theme.semanticTokenColors[semKey] = val;
-		}
-		if (item.uiMirrors) {
-			for (const mirrorKey of item.uiMirrors) {
-				theme.colors[mirrorKey] = val;
-			}
-		}
-	}
-	fs.writeFileSync(themePath, JSON.stringify(theme, null, 2) + '\n', 'utf8');
-}
-
-async function saveToThemeFile(vscode, themePath, state) {
-	writeThemeJson(themePath, state);
-	// Keep customizations active in settings so VS Code reflects all colors without needing a reload
-	await applyCustomizations(vscode, themePath, state, false);
-}
-
-function buildWebviewHtml(initialState) {
+function buildWebviewHtml(initialState, nonce) {
+	// Inlined into <script>: escape '<' so a settings value containing </script> cannot end the block.
 	const payload = JSON.stringify({
 		uiControls: UI_COLOR_CONTROLS,
 		tokenControls: TOKEN_CONTROLS,
 		presets: PRESETS,
 		state: initialState
-	});
+	}).replace(/</g, '\\u003c');
 
 	return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gloria Control Panel</title>
 <style>
@@ -785,7 +682,6 @@ function buildWebviewHtml(initialState) {
     </div>
     <div class="actions">
       <button id="btn-reset" title="Restore default Gloria colors">Reset All</button>
-      <button id="btn-save" class="primary" title="Write current colors permanently into gloria-color-theme.json">Save to Theme JSON</button>
     </div>
   </div>
 
@@ -865,7 +761,7 @@ function buildWebviewHtml(initialState) {
     <div class="control-grid" id="token-controls-grid"></div>
   </div>
 
-<script>
+<script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const INIT = ${payload};
   let state = JSON.parse(JSON.stringify(INIT.state));
@@ -1041,9 +937,6 @@ function buildWebviewHtml(initialState) {
     document.getElementById('btn-reset').addEventListener('click', () => {
       vscode.postMessage({ type: 'resetAll' });
     });
-    document.getElementById('btn-save').addEventListener('click', () => {
-      vscode.postMessage({ type: 'saveToThemeFile', state });
-    });
   }
 
   function createColorRow(label, getter, setter, resetter, domId) {
@@ -1145,8 +1038,9 @@ function registerControlPanel(vscode, context, extensionRoot) {
 		|| { fsPath: path.join(extensionRoot, 'assets', 'rabbit.svg') };
 	const webviews = new Set();
 	let activePanel;
-	let applying = false;
+	let pending = 0;
 	let ignoreConfigUntil = 0;
+	let queue = Promise.resolve();
 
 	function broadcastState(toastText) {
 		const state = readCurrentState(vscode, themePath);
@@ -1156,35 +1050,38 @@ function registerControlPanel(vscode, context, extensionRoot) {
 		}
 	}
 
-	async function handleMessage(message) {
-		try {
-			applying = true;
-			ignoreConfigUntil = Date.now() + 400;
-			if (message.type === 'update' && message.state) {
-				await applyCustomizations(vscode, themePath, message.state, false);
-			} else if (message.type === 'resetAll') {
-				const defaults = getBaseDefaults();
-				writeThemeJson(themePath, defaults);
-				await applyCustomizations(vscode, themePath, {
-					colors: defaults.colors,
-					tokens: defaults.tokens,
-					glow: { brightness: 0.45, whiteGlowRadius: 25, disableGlow: false },
-					enableWorkbench: true
-				}, true);
-				broadcastState('Reset to defaults');
-			} else if (message.type === 'saveToThemeFile' && message.state) {
-				await saveToThemeFile(vscode, themePath, message.state);
-				broadcastState('Saved to gloria-color-theme.json');
-			}
-		} finally {
-			ignoreConfigUntil = Date.now() + 400;
-			applying = false;
+	async function processMessage(message) {
+		if (message?.type === 'update' && message.state) {
+			await applyCustomizations(vscode, themePath, sanitizeState(message.state), false);
+		} else if (message?.type === 'resetAll') {
+			await applyCustomizations(vscode, themePath, {
+				glow: { brightness: 0.45, whiteGlowRadius: 25, disableGlow: false },
+				enableWorkbench: true
+			}, true);
+			broadcastState('Reset to defaults');
 		}
 	}
 
+	// Each apply is a read-modify-write of several settings; serialize them so a slow update
+	// cannot interleave with the next debounced one and resurrect stale values.
+	function handleMessage(message) {
+		pending++;
+		const run = queue
+			.then(() => processMessage(message))
+			.catch(error => { vscode.window.showErrorMessage?.(`Gloria: ${error.message}`); })
+			.finally(() => {
+				pending--;
+				// Configuration events can land just after update() resolves.
+				ignoreConfigUntil = Date.now() + 400;
+			});
+		queue = run;
+		return run;
+	}
+
 	function attachWebview(webview) {
-		webview.options = { enableScripts: true };
-		webview.html = buildWebviewHtml(readCurrentState(vscode, themePath));
+		// No local resources: everything the panel needs is inlined.
+		webview.options = { enableScripts: true, localResourceRoots: [] };
+		webview.html = buildWebviewHtml(readCurrentState(vscode, themePath), crypto.randomBytes(16).toString('base64'));
 		webviews.add(webview);
 		const sub = webview.onDidReceiveMessage(handleMessage);
 		return () => {
@@ -1218,7 +1115,7 @@ function registerControlPanel(vscode, context, extensionRoot) {
 			'gloria.controlPanel',
 			'Gloria Control Panel',
 			column,
-			{ enableScripts: true, retainContextWhenHidden: true }
+			{ enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [] }
 		);
 		panel.iconPath = iconUri;
 		activePanel = panel;
@@ -1251,11 +1148,12 @@ function registerControlPanel(vscode, context, extensionRoot) {
 	// Keep open webviews synced if settings change externally
 	context.subscriptions.push(
 		vscode.workspace.onDidChangeConfiguration(event => {
-			if (applying || Date.now() < ignoreConfigUntil || webviews.size === 0) return;
+			if (pending || Date.now() < ignoreConfigUntil || webviews.size === 0) return;
 			if (
 				event.affectsConfiguration('gloria') ||
 				event.affectsConfiguration('workbench.colorCustomizations') ||
-				event.affectsConfiguration('editor.tokenColorCustomizations')
+				event.affectsConfiguration('editor.tokenColorCustomizations') ||
+				event.affectsConfiguration('editor.semanticTokenColorCustomizations')
 			) {
 				broadcastState();
 			}
@@ -1277,6 +1175,8 @@ module.exports = {
 	PRESETS,
 	readCurrentState,
 	applyCustomizations,
-	saveToThemeFile,
+	sanitizeState,
+	getDefaults,
+	glowColorsFor,
 	registerControlPanel
 };

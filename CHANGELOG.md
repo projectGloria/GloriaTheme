@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.9
+
+- Update extension description to be clear, descriptive, and self-explanatory for the VS Code Marketplace.
+- Add high-resolution header banner, interactive control panel mockup, and glowing rabbit badge graphics to README.
+- Fix image and logo URLs to resolve reliably on the Visual Studio Marketplace and GitHub CDN.
+- Patch VS Code's workbench only while Gloria is the active theme; switching themes restores it once no Gloria window remains, and uninstalling restores it on the next restart (`vscode:uninstall`).
+- Glow follows token roles instead of exact hex values, so recolored roles keep their glow; colorized brackets glow per nesting level.
+- Control Panel no longer writes into the installed theme file; Reset only clears panel-managed customizations; webview gains a CSP, validated messages and serialized updates.
+- Keywords get a distinct lavender hue; `true`/`false`/`null` render as yellow literals; Python call arguments no longer inherit function color.
+- Translucent selections; readable unfocused selection text; visible buttons, list selection and debugging status bar; bracket pair colorization; terminal ANSI, diff, git, find and peek colors.
+- CS2 grammar applies only to CS2 config folders and `autoexec.cfg` instead of every `.cfg` file.
+- Warn when the pre-rename `Nihil.gloria-theme` build is installed alongside this one; require VS Code 1.82+.
+
 ## 1.0.8
 
 - Add automatic `.cfg` language detection for Counter-Strike 2 console configs.
