@@ -6,16 +6,17 @@
 
 **A luminous cyberpunk & retro-futuristic dark theme crafted for Visual Studio Code**
 
-*Deep obsidian contrast, multi-layered neon bloom, real-time control panel, and dedicated Counter-Strike 2 syntax.*
+*Built primarily for the JavaScript ecosystem, with deep obsidian contrast, multi-layered neon bloom, and a real-time control panel—plus Counter-Strike 2 syntax support as a hobby project.*
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=Nihilnia.gloria-theme"><img src="https://img.shields.io/visual-studio-marketplace/v/Nihilnia.gloria-theme?style=flat-square&label=Marketplace&color=00ffff" alt="Visual Studio Marketplace Version" /></a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=Nihilnia.gloria-theme"><img src="https://img.shields.io/visual-studio-marketplace/i/Nihilnia.gloria-theme?style=flat-square&color=ff007f" alt="Marketplace Installs" /></a>
-  <a href="package.json"><img src="https://img.shields.io/badge/VS_Code-%5E1.82.0-007ACC.svg?style=flat-square&logo=visual-studio-code&logoColor=white" alt="VS Code Version" /></a>
+  <a href="https://github.com/Nihilnia"><img src="https://img.shields.io/badge/Built_by-Nihil-dc143c.svg?style=flat-square&logo=github&logoColor=white" alt="Built by Nihil" /></a>
+  <img src="https://img.shields.io/badge/Built_For-JavaScript%20Ecosystem-f7df1e.svg?style=flat-square&logo=javascript&logoColor=f7df1e" alt="Built for the JavaScript Ecosystem" />
   <img src="https://img.shields.io/badge/Theme-Cyberpunk%20%7C%20Retro--Futuristic-00ffff.svg?style=flat-square" alt="Cyberpunk Theme" />
-  <img src="https://img.shields.io/badge/Language-Counter--Strike%202%20CFG-ff9900.svg?style=flat-square&logo=counter-strike" alt="CS2 Config Support" />
+  <a href="package.json"><img src="https://img.shields.io/badge/VS_Code-%5E1.82.0-007ACC.svg?style=flat-square&logo=visual-studio-code&logoColor=white" alt="VS Code Version" /></a>
+  <a href="https://marketplace.visualstudio.com/items?itemName=Nihilnia.gloria-theme"><img src="https://img.shields.io/badge/Version-2.0.1-00ffff.svg?style=flat-square" alt="Gloria Version 2.0.1" /></a>
   <img src="https://img.shields.io/badge/Zero_Runtime_Deps-Pure%20Vanilla%20JS-00ff41.svg?style=flat-square" alt="Zero Dependencies" />
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT License" /></a>
+  <a href="https://github.com/projectGloria/GloriaTheme"><img src="https://img.shields.io/badge/GitHub-Repo-00ffff.svg?style=flat-square&logo=github&logoColor=white" alt="GitHub Repo" /></a>
 </p>
 
 ---
@@ -35,13 +36,21 @@
 
 ## 🌌 Welcome to Gloria
 
-**Gloria** (`プロジェクト_Gloria`) is an immersive, high-contrast dark theme and ambient developer experience designed for Visual Studio Code. Inspired by cyberpunk aesthetics, neon terminal command centers, and retro-futuristic computing lore (*Temet Nosce*), Gloria turns your code editor into a radiant terminal workspace.
+**Gloria** (`プロジェクト_Gloria`) is an immersive, high-contrast dark theme built primarily for the JavaScript ecosystem in Visual Studio Code. Inspired by cyberpunk aesthetics, neon terminal command centers, and retro-futuristic computing lore (*Temet Nosce*), Gloria turns your code editor into a radiant terminal workspace.
+
+**A theme you can tune while you code.** Gloria's built-in control panel lets you change glow brightness, syntax colors, and editor colors in real time. Try a preset or move a slider and watch the live preview respond—no JSON editing or editor restart needed for these adjustments.
+
+<p align="center">
+  <a href="#-interactive-control-panel"><img src="https://raw.githubusercontent.com/projectGloria/GloriaTheme/main/assets/gloria-control-panel.png" alt="Gloria's actual control panel with a live code preview, glow sliders, presets, and color controls" width="100%" /></a>
+  <br />
+  <em>Live glow adjustments, presets, and color controls—all from the built-in panel.</em>
+</p>
 
 Unlike traditional color themes that are limited to simple static syntax tokens, Gloria integrates:
 - 🔮 **Multi-Layer Neon Bloom**: Real-time radiant text glow with customizable white halo radius and brightness across syntax roles, structural HTML ancestors, CSS curly brackets, and Markdown headers.
-- 🎛️ **Sidebar Control Panel GUI**: An interactive, real-time customizer embedded directly into your Activity Bar to tweak glow parameters, theme tokens, and editor chrome on the fly.
+- 🎛️ **Live Control Panel**: Change glow, syntax colors, and editor colors from the sidebar, with a built-in preview and live updates—no restart for these adjustments.
 - 🍷 **High-Contrast Burgundy Selection**: Crisp, readable flat white text highlighted over a luminous burgundy background.
-- 🎯 **First-Class Counter-Strike 2 CFG Support**: Dedicated TextMate grammar with glowing commands, aliases, keybinds, and cvars for CS2 configuration files.
+- 🎯 **Counter-Strike 2 CFG Support**: A hobby addition with dedicated TextMate grammar for glowing commands, aliases, keybinds, and cvars.
 - 🛡️ **Zero Runtime Dependencies & Safe Cleanup**: Clean vanilla JavaScript architecture with single-command workbench file restoration.
 
 ---
@@ -50,31 +59,31 @@ Unlike traditional color themes that are limited to simple static syntax tokens,
 
 <table>
   <tr>
-    <td width="50%">
+    <td width="50%" height="180" valign="top">
       <h3>🔮 Multi-Layered Neon Glow</h3>
       <p>Custom multi-layer text bloom with independent white halo radius and live brightness control (0.0 to 1.0) synchronized across all visible editor splits.</p>
     </td>
-    <td width="50%">
+    <td width="50%" height="180" valign="top">
       <h3>🎛️ Interactive Control Panel</h3>
-      <p>Built-in sidebar GUI (featuring the Gloria Rabbit) for real-time live adjustments of syntax colors, UI tokens, and glow parameters without leaving the editor.</p>
+      <p>Built-in sidebar GUI (featuring the Gloria Rabbit), live code preview, and color presets. Adjust syntax colors, editor colors, and glow while you code—no restart needed for these adjustments.</p>
     </td>
   </tr>
   <tr>
-    <td width="50%">
+    <td width="50%" height="180" valign="top">
       <h3>🧬 Structural AST Highlighting</h3>
       <p>Intelligent AST-aware decorations: qualifying ancestor tags glow to clarify deep hierarchies, while CSS units, parentheses, and braces receive distinct radiant styling.</p>
     </td>
-    <td width="50%">
+    <td width="50%" height="180" valign="top">
       <h3>🎯 Counter-Strike 2 CFG Grammar</h3>
       <p>Built-in language mode for <code>.cfg</code> files featuring glowing commands, aliases, cvars, keybind strings, numbers, booleans, and <code>// #region</code> folding.</p>
     </td>
   </tr>
   <tr>
-    <td width="50%">
+    <td width="50%" height="180" valign="top">
       <h3>🍷 High-Contrast Burgundy Selection</h3>
       <p>Selected text displays crisp, readable flat white over deep burgundy through lightweight editor decorations in both standard dark and high-contrast environments.</p>
     </td>
-    <td width="50%">
+    <td width="50%" height="180" valign="top">
       <h3>🛡️ Safe Injection &amp; One-Click Restore</h3>
       <p>Gloria automatically cleans up workbench injections when switching themes. Run <strong>Gloria: Restore VS Code Workbench</strong> at any time to instantly revert to stock VS Code.</p>
     </td>
@@ -85,13 +94,17 @@ Unlike traditional color themes that are limited to simple static syntax tokens,
 
 ## 🎛️ Interactive Control Panel
 
-> **Tune your aesthetic in real time without editing JSON or restarting your editor.**
+> **Move a slider. Pick a color. Keep coding. Your changes apply live.**
 
-Gloria includes a dedicated Webview Control Panel embedded right into the VS Code Activity Bar under the **Gloria Theme** view container.
+Open **Gloria Theme** in the VS Code Activity Bar to adjust your theme while you work. The panel includes a live code preview, four color presets, glow sliders, and individual color controls for syntax and the editor. Brightness, radius, preset, and color adjustments apply without restarting the editor or reloading the window.
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/projectGloria/GloriaTheme/main/assets/gloria-control-panel.png" alt="Gloria Theme Control Panel in VS Code" width="100%" />
+  <img src="https://raw.githubusercontent.com/projectGloria/GloriaTheme/main/assets/gloria-control-panel.png" alt="Actual Gloria control panel with live code preview, four presets, glow sliders, editor color pickers, and syntax token color pickers" width="100%" />
+  <br />
+  <em>The complete control panel, rendered directly from the extension's HTML and styles.</em>
 </p>
+
+The initial workbench skin setup requires one window reload when prompted. After setup, the live adjustments above need no further reloads.
 
 ### How to Open the Control Panel
 
@@ -120,6 +133,7 @@ Gloria includes a dedicated Webview Control Panel embedded right into the VS Cod
   - Customize Editor Background, Selection, Cursor, Line Numbers, Tab Borders, Sidebar, and Terminal foreground colors.
 
 - 🔄 **Safe Presets & Reset**:
+  - **Four Built-in Presets**: Switch between Gloria Default, Matrix Rabbit, Cyber Cyan, and Crimson Overdrive.
   - **Reset All**: Instantly restore default Gloria colors without touching your other VS Code preferences.
 
 ---
@@ -151,6 +165,8 @@ Gloria patches the workbench only while **Gloria** is the active color theme. Sw
 
 ## 🎯 Counter-Strike 2 Support
 
+<img src="https://img.shields.io/badge/Language-Counter--Strike%202%20CFG-ff9900.svg?style=flat-square&logo=counter-strike" alt="CS2 Config Support" />
+
 Gloria features native TextMate syntax highlighting for Counter-Strike 2 (`.cfg`) configuration scripts:
 
 ```cs2
@@ -165,10 +181,11 @@ fps_max 0
 // #endregion
 ```
 
-- **Commands & Aliases**: Rendered in glowing crisp white; the `alias` keyword glows in vibrant lavender.
+- **Commands & Aliases**: Rendered in glowing crisp white.
 - **CVars & Settings**: Rendered in radiant neon red.
 - **Key Binds & Strings**: Rendered in luminous cyber green.
-- **Numbers & Booleans**: Rendered in vibrant yellow.
+- **Numeric Values**: Rendered in vibrant yellow.
+- **Booleans**: Rendered in clean flat white.
 - **Comments (`//`)**: Rendered in italic muted gray with line-comment toggling (<kbd>Ctrl</kbd>+<kbd>/</kbd>).
 - **Folding Regions**: Native code folding support for `// #region` and `// #endregion`.
 
@@ -226,7 +243,21 @@ Gloria was engineered on the principle that a coding environment should be an in
 
 ## 📜 Credits & License
 
-- **Author**: Nihil ([@projectGloria](https://github.com/projectGloria))
-- **Publisher**: Nihilnia
-- **Repository**: [projectGloria/GloriaTheme](https://github.com/projectGloria/GloriaTheme)
-- **License**: Distributed under the [MIT License](LICENSE) &copy; Nihil.
+<table>
+  <tr>
+    <td><strong>Author</strong></td>
+    <td><a href="https://github.com/Nihilnia">Nihil</a></td>
+  </tr>
+  <tr>
+    <td><strong>Publisher</strong></td>
+    <td>Nihil</td>
+  </tr>
+  <tr>
+    <td><strong>Repository</strong></td>
+    <td><a href="https://github.com/projectGloria/GloriaTheme"><img src="https://img.shields.io/badge/GitHub-Repo-00ffff.svg?style=flat-square&logo=github&logoColor=white" alt="GitHub Repo" /></a></td>
+  </tr>
+  <tr>
+    <td><strong>License</strong></td>
+    <td><a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" alt="MIT License" /></a> &copy; Nihil.</td>
+  </tr>
+</table>

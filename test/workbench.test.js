@@ -169,8 +169,7 @@ test('renderer glows by role map, so recolored roles keep glowing and unmapped c
 	const r = await renderer(t);
 	assert.match(r.style().textContent, /\.mtk3\{text-shadow:/, 'default map: #ff0000 is a glowing role');
 	assert.doesNotMatch(r.style().textContent, /\.mtk4\{text-shadow:/, 'strings never glow');
-	assert.match(r.style().textContent, /\.bracket-highlighting-0\{text-shadow:[^}]*--vscode-editorBracketHighlight-foreground1/);
-	assert.match(r.style().textContent, /\.bracket-highlighting-7\{text-shadow:[^}]*--vscode-editorBracketHighlight-foreground2/);
+	assert.doesNotMatch(r.style().textContent, /bracket-highlighting/, 'colorized brackets keep their original, token-driven glow');
 	await r.update({ glowColors: { '40ff00': 'halo', bogus: 'halo', fdfdfd: 'nope' } });
 	assert.match(r.style().textContent, /\.mtk4\{text-shadow:[^}]*#40ff00/);
 	assert.doesNotMatch(r.style().textContent, /\.mtk3\{text-shadow:/);

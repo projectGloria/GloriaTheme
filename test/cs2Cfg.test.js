@@ -92,13 +92,13 @@ test('unquoted numbers and boolean values retain their literal styling', () => {
 	expectToken('cl_crosshair_gap -2.5', '-2.5', 'constant.numeric', '#FFFF00');
 	expectToken('volume .5', '.5', 'constant.numeric', '#FFFF00');
 	expectToken('some_value 1e-3', '1e-3', 'constant.numeric', '#FFFF00');
-	expectToken('cl_crosshair_recoil false', 'false', 'constant.language.boolean', '#FFFF00');
-	expectToken('cl_crosshair_recoil "true"', 'true', 'constant.language.boolean', '#FFFF00');
+	expectToken('cl_crosshair_recoil false', 'false', 'constant.language.boolean', '#FEFEFE');
+	expectToken('cl_crosshair_recoil "true"', 'true', 'constant.language.boolean', '#FEFEFE');
 });
 
 test('alias declarations support quoted and unquoted names and preserve command strings', () => {
 	const line = 'alias "crosshair_primary" "cl_crosshair_thickness 1; alias crosshair_toggle secondary"';
-	expectToken(line, 'alias', 'keyword.control', '#D580FF');
+	expectToken(line, 'alias', 'keyword.control', '#FDFDFD');
 	expectToken(line, 'crosshair_primary', 'entity.name.function.alias', '#FDFDFD');
 	expectToken(line, 'cl_crosshair_thickness', 'string.quoted.double', '#40FF00');
 	expectToken(line, ';', 'string.quoted.double', '#40FF00');

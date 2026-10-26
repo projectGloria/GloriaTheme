@@ -74,8 +74,8 @@ const TOKEN_CONTROLS = [
 	},
 	{
 		id: 'numbers',
-		label: 'Numbers, Units & Literals',
-		ruleNames: ['Number', 'Language Constants', 'HTML Character Entities', 'CSS Units (Non-glowing)'],
+		label: 'Numbers & Units',
+		ruleNames: ['Number', 'HTML Character Entities', 'CSS Units (Non-glowing)'],
 		semantic: []
 	},
 	{
@@ -84,8 +84,11 @@ const TOKEN_CONTROLS = [
 		glow: 'bracket',
 		ruleNames: ['Brackets (Glowing)'],
 		semantic: [],
-		// Only the first colorization level follows this token; levels 2-6 keep their own theme colors.
-		uiMirrors: ['editorBracketHighlight.foreground1']
+		uiMirrors: [
+			'editorBracketHighlight.foreground1', 'editorBracketHighlight.foreground2',
+			'editorBracketHighlight.foreground3', 'editorBracketHighlight.foreground4',
+			'editorBracketHighlight.foreground5', 'editorBracketHighlight.foreground6'
+		]
 	},
 	{
 		id: 'comments',
@@ -130,8 +133,8 @@ const PRESETS = {
 			'sideBar.background': '#000802',
 			'activityBar.background': '#000802',
 			'statusBar.background': '#000802',
-			'editor.selectionBackground': '#00aa2a80',
-			'editor.inactiveSelectionBackground': '#00ff417f',
+			'editor.selectionBackground': '#005515',
+			'editor.inactiveSelectionBackground': '#00FF41',
 			'editorLineNumber.activeForeground': '#00FF41',
 			'tab.activeBorder': '#00FF41',
 			'activityBar.activeBorder': '#00FF41',
@@ -154,7 +157,7 @@ const PRESETS = {
 			'tab.activeBackground': '#020813',
 			'tab.inactiveBackground': '#01050c',
 			'sideBar.background': '#020813',
-			'editor.selectionBackground': '#0096dc80',
+			'editor.selectionBackground': '#004b6e',
 			'editor.inactiveSelectionBackground': '#00ffff66',
 			'editorLineNumber.activeForeground': '#00ffff',
 			'tab.activeBorder': '#00ffff',
@@ -176,7 +179,7 @@ const PRESETS = {
 			'tab.activeBackground': '#090002',
 			'tab.inactiveBackground': '#050001',
 			'sideBar.background': '#090002',
-			'editor.selectionBackground': '#ff000099',
+			'editor.selectionBackground': '#a80000',
 			'editor.inactiveSelectionBackground': '#ff003380',
 			'editorLineNumber.activeForeground': '#ff0033',
 			'tab.activeBorder': '#ff0033',
@@ -273,14 +276,14 @@ function sanitizeState(raw) {
 	};
 }
 
-// Status bar debugging/no-folder colors are deliberately not mirrored: they must stay distinct.
 const MIRROR_COLOR_KEYS = {
 	'editor.selectionBackground': ['selection.background'],
 	'editorGroupHeader.tabsBackground': ['editorGroupHeader.noTabsBackground'],
 	'tab.activeBackground': ['tab.unfocusedActiveBackground'],
 	'tab.inactiveBackground': ['tab.unfocusedInactiveBackground'],
 	'titleBar.activeBackground': ['titleBar.inactiveBackground'],
-	'sideBar.background': ['sideBarSectionHeader.background']
+	'sideBar.background': ['sideBarSectionHeader.background'],
+	'statusBar.background': ['statusBar.noFolderBackground', 'statusBar.debuggingBackground']
 };
 
 const sameColor = (first, second) => (first || '').toLowerCase() === (second || '').toLowerCase();

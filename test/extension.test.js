@@ -241,11 +241,11 @@ test('starting on another theme removes a patch left behind by an earlier sessio
 test('the state file carries a role glow map that follows token customizations', async t => {
 	const r = setup(t);
 	const state = () => JSON.parse(fs.readFileSync(r.files.stateFile));
-	assert.deepEqual(state().glowColors, { ff0000: 'ember', d580ff: 'halo', fdfdfd: 'halo', '1e90ff': 'bracket' });
+	assert.deepEqual(state().glowColors, { ff0000: 'ember', fdfdfd: 'halo', '1e90ff': 'bracket', ff0001: 'ember' });
 	r.commands.get('gloria.openControlPanel')();
 	await r.webviewPanels[0].webview.send({ type: 'update', state: { tokens: { keywords: '#00ffff' } } });
 	assert.equal(state().glowColors['00ffff'], 'halo', 'recolored keywords keep their glow');
-	assert.equal(state().glowColors.d580ff, undefined);
+	assert.equal(state().glowColors.fdfdfd, 'halo', 'functions and CSS selectors still own the white glow');
 });
 
 test('a copy installed under the pre-rename publisher triggers a warning', t => {

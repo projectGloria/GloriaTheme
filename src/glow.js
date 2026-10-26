@@ -5,10 +5,10 @@ const GLOW_KINDS = ['halo', 'bracket', 'ember'];
 // Stock theme colors of the glowing roles. The extension writes the live map (including
 // user customizations) into the state file; this is only the fallback for older state files.
 const DEFAULT_GLOW_COLORS = {
-	fdfdfd: 'halo', // functions, CSS selectors and curly braces
-	d580ff: 'halo', // keywords
+	fdfdfd: 'halo', // keywords, functions, CSS selectors and curly braces
 	'1e90ff': 'bracket',
-	ff0000: 'ember' // variables, properties, Markdown headers
+	ff0000: 'ember', // variables and properties
+	ff0001: 'ember' // Markdown headers
 };
 
 function normalizeGlowSettings(settings = {}) {
@@ -43,18 +43,10 @@ function glowShadow(color, settings, kind = DEFAULT_GLOW_COLORS[color] || 'ember
 		return `0 0 2px #393a33, 0 0 8px #${halo}${alpha}, 0 0 ${whiteGlowRadius}px #${halo}${alpha}`;
 	}
 	if (kind === 'bracket') return `0 0 2px #001716, 0 0 4px #${color}${alpha}, 0 0 8px #${color}${alpha}`;
-	return `0 0 2px #000000, 0 0 4px #${color}${alpha}, 0 0 6px #${color}${alpha}`;
-}
-
-// Bracket pair colorization paints brackets through .bracket-highlighting-N classes, not token
-// colors, so each level glows in its own theme color via the CSS variable VS Code exposes.
-function bracketLevelShadow(level, settings) {
-	const { brightness, disableGlow } = normalizeGlowSettings(settings);
-	if (disableGlow || brightness === 0) return 'none';
-	const tint = `color-mix(in srgb, var(--vscode-editorBracketHighlight-foreground${level % 6 + 1}) ${Math.round(brightness * 100)}%, transparent)`;
-	return `0 0 2px #001716, 0 0 4px ${tint}, 0 0 8px ${tint}`;
+	const ember = color === 'ff0001' ? 'ff0000' : color;
+	return `0 0 2px #000000, 0 0 4px #${ember}${alpha}, 0 0 6px #${ember}${alpha}`;
 }
 
 if (typeof module !== 'undefined' && typeof window === 'undefined') {
-	module.exports = { GLOW_KINDS, DEFAULT_GLOW_COLORS, normalizeGlowSettings, normalizeGlowColors, glowShadow, bracketLevelShadow };
+	module.exports = { GLOW_KINDS, DEFAULT_GLOW_COLORS, normalizeGlowSettings, normalizeGlowColors, glowShadow };
 }

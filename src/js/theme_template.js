@@ -48,10 +48,6 @@
           rules.push(`${selectors}{text-shadow:${glowShadow(hex, settings, kind)};backface-visibility:hidden;}`);
         }
       }
-      // Appended after token rules: equal specificity, so colorized brackets take their level's glow.
-      for (let level = 0; level < 30; level++) {
-        rules.push(`.monaco-workbench .bracket-highlighting-${level}{text-shadow:${bracketLevelShadow(level, settings)};}`);
-      }
     }
     // Background customizations need no plumbing: the chrome CSS reads VS Code's color variables.
     const css = rules.join('\n') + '\n' + chromeStyles;
